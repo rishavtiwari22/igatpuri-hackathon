@@ -106,8 +106,8 @@ body {
 
 /* Shapes Base */
 .shape {
-    width: 80px;
-    height: 80px;
+    width: 65px;
+    height: 65px;
     position: relative;
     margin: 0 auto;
     transform-origin: center;
@@ -158,9 +158,9 @@ body {
 .triangle {
     width: 0;
     height: 0;
-    border-left: 40px solid transparent;
-    border-right: 40px solid transparent;
-    border-bottom: 70px solid #ff6f00;
+    border-left: 32.5px solid transparent;
+    border-right: 32.5px solid transparent;
+    border-bottom: 56.25px solid #ff6f00;
     background: none;
     border-radius: 0;
     position: relative;
@@ -170,25 +170,25 @@ body {
 .triangle::before {
     content: '';
     position: absolute;
-    top: 10px;
-    left: -32px;
+    top: 8px;
+    left: -26px;
     width: 0;
     height: 0;
-    border-left: 32px solid transparent;
-    border-right: 32px solid transparent;
-    border-bottom: 56px solid #ff8f00;
+    border-left: 26px solid transparent;
+    border-right: 26px solid transparent;
+    border-bottom: 45px solid #ff8f00;
 }
 
 .triangle::after {
     content: '';
     position: absolute;
-    top: 20px;
-    left: -20px;
+    top: 16px;
+    left: -16.25px;
     width: 0;
     height: 0;
-    border-left: 20px solid transparent;
-    border-right: 20px solid transparent;
-    border-bottom: 35px solid #ffb300;
+    border-left: 16.25px solid transparent;
+    border-right: 16.25px solid transparent;
+    border-bottom: 28.125px solid #ffb300;
 }
 
 /* Diamond */
@@ -204,8 +204,8 @@ body {
 
 /* Hexagon */
 .hexagon {
-    width: 80px;
-    height: 70px;
+    width: 65px;
+    height: 56.25px;
     background: linear-gradient(135deg, #059669 0%, #10b981 25%, #34d399 50%, #6ee7b7 75%, #a7f3d0 100%);
     position: relative;
     border-radius: 8px;
@@ -220,25 +220,25 @@ body {
     content: '';
     position: absolute;
     width: 0;
-    border-left: 40px solid transparent;
-    border-right: 40px solid transparent;
+    border-left: 32.5px solid transparent;
+    border-right: 32.5px solid transparent;
 }
 
 .hexagon::before {
     bottom: 100%;
-    border-bottom: 20px solid #059669;
+    border-bottom: 16.25px solid #059669;
 }
 
 .hexagon::after {
     top: 100%;
-    border-top: 20px solid #059669;
+    border-top: 16.25px solid #059669;
 }
 
 /* Star */
 .star {
     position: relative;
-    width: 80px;
-    height: 80px;
+    width: 65px;
+    height: 65px;
     background: none;
     filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.3)) drop-shadow(0 0 20px rgba(245, 158, 11, 0.4));
 }
@@ -251,9 +251,9 @@ body {
     transform: translateX(-50%);
     width: 0;
     height: 0;
-    border-left: 40px solid transparent;
-    border-right: 40px solid transparent;
-    border-bottom: 30px solid #d97706;
+    border-left: 32.5px solid transparent;
+    border-right: 32.5px solid transparent;
+    border-bottom: 24.375px solid #d97706;
 }
 
 .star::after {
@@ -264,9 +264,9 @@ body {
     transform: translateX(-50%) rotate(180deg);
     width: 0;
     height: 0;
-    border-left: 40px solid transparent;
-    border-right: 40px solid transparent;
-    border-bottom: 30px solid #d97706;
+    border-left: 32.5px solid transparent;
+    border-right: 32.5px solid transparent;
+    border-bottom: 24.375px solid #d97706;
 }
 
 .star .shape-inner::before {
@@ -277,9 +277,9 @@ body {
     transform: translate(-50%, -50%) rotate(60deg);
     width: 0;
     height: 0;
-    border-left: 40px solid transparent;
-    border-right: 40px solid transparent;
-    border-bottom: 30px solid #f59e0b;
+    border-left: 32.5px solid transparent;
+    border-right: 32.5px solid transparent;
+    border-bottom: 24.375px solid #f59e0b;
 }
 
 .star .shape-inner::after {
@@ -290,9 +290,9 @@ body {
     transform: translate(-50%, -50%) rotate(-60deg);
     width: 0;
     height: 0;
-    border-left: 40px solid transparent;
-    border-right: 40px solid transparent;
-    border-bottom: 30px solid #f59e0b;
+    border-left: 32.5px solid transparent;
+    border-right: 32.5px solid transparent;
+    border-bottom: 24.375px solid #f59e0b;
 }
 
 /* Swaying Animations */
@@ -442,18 +442,69 @@ body {
 
 /* Image Display */
 .image-display {
-    position: absolute;
-    top: 300px;
-    left: 20px;
+    margin: 20px auto;
     z-index: 20;
     border: 5px solid #fff;
     border-radius: 10px;
     box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
     overflow: hidden;
+    width: 300px;
 }
 
 .image-display img {
     width: 300px;
     height: auto;
     display: block;
+}
+
+/* New Layout Styles */
+.shapes-container {
+    height: 220px; /* Give space for the shapes to hang */
+}
+
+.generation-controls {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.prompt-input {
+    width: 400px;
+    padding: 10px;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+    margin-right: 10px;
+}
+
+.generate-button {
+    padding: 10px 20px;
+    border-radius: 5px;
+    border: none;
+    background-color: #4CAF50;
+    color: white;
+    cursor: pointer;
+}
+
+.main-content {
+    display: flex;
+    justify-content: space-around;
+}
+
+.left-panel, .right-panel {
+    width: 45%;
+}
+
+.generated-image-placeholder, .feedback-placeholder {
+    width: 300px;
+    height: 200px;
+    border: 2px dashed #ccc;
+    border-radius: 10px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: #999;
+    margin: 20px auto;
+}
+
+.feedback-placeholder {
+    height: 100px;
 }

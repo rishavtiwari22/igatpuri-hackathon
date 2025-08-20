@@ -18,35 +18,69 @@ const shapes = [
 
 export default function HangingShapes() {
   const [selectedImage, setSelectedImage] = useState(null);
+  const [prompt, setPrompt] = useState("");
 
   const handleShapeClick = (image) => {
     setSelectedImage(image);
   };
 
+  const handleGenerateClick = () => {
+    // Placeholder for image generation logic
+    console.log("Generate image with prompt:", prompt);
+  };
+
   return (
     <div className="container">
       <div className="ceiling"></div>
-      {shapes.map((shape, index) => (
-        <div
-          className="hanging-system"
-          style={{ left: shape.left }}
-          key={index}
-          onClick={() => handleShapeClick(shape.image)}
-        >
-          <div className="hook"></div>
-          <div className={`swing-container ${shape.rope}`}>
-            <div className="rope"></div>
-            <div className={`shape ${shape.type}`}>
-              <div className="shape-inner"></div>
+      <div className="shapes-container">
+        {shapes.map((shape, index) => (
+          <div
+            className="hanging-system"
+            style={{ left: shape.left }}
+            key={index}
+            onClick={() => handleShapeClick(shape.image)}
+          >
+            <div className="hook"></div>
+            <div className={`swing-container ${shape.rope}`}>
+              <div className="rope"></div>
+              <div className={`shape ${shape.type}`}>
+                <div className="shape-inner"></div>
+              </div>
             </div>
           </div>
+        ))}
+      </div>
+
+      <div className="generation-controls">
+        <input
+          type="text"
+          value={prompt}
+          onChange={(e) => setPrompt(e.target.value)}
+          placeholder="Enter a prompt to generate an image"
+          className="prompt-input"
+        />
+        <button onClick={handleGenerateClick} className="generate-button">
+          Generate Image
+        </button>
+      </div>
+
+      <div className="main-content">
+        <div className="left-panel">
+          {selectedImage && (
+            <div className="image-display">
+              <img src={selectedImage} alt="Selected Shape" />
+            </div>
+          )}
         </div>
-      ))}
-      {selectedImage && (
-        <div className="image-display">
-          <img src={selectedImage} alt="Selected Shape" />
+        <div className="right-panel">
+          <div className="generated-image-placeholder">
+            <p>Generated image will appear here</p>
+          </div>
+          <div className="feedback-placeholder">
+            <p>Matching feedback will appear here</p>
+          </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }
