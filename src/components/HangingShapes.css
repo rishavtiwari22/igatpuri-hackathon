@@ -296,32 +296,26 @@ body {
 }
 
 /* Swaying Animations */
-.rope-1 { animation: sway1 8s ease-in-out infinite; animation-delay: 0s; }
-.rope-2 { animation: sway2 7.5s ease-in-out infinite; animation-delay: -1s; }
-.rope-3 { animation: sway3 9s ease-in-out infinite; animation-delay: -2s; }
-.rope-4 { animation: sway1 8.5s ease-in-out infinite; animation-delay: -3s; }
-.rope-5 { animation: sway2 7s ease-in-out infinite; animation-delay: -4s; }
-.rope-6 { animation: sway3 9.5s ease-in-out infinite; animation-delay: -5s; }
+.rope-1 { animation: sway1 6s ease-in-out infinite alternate; animation-delay: 0s; }
+.rope-2 { animation: sway2 7s ease-in-out infinite alternate; animation-delay: -1s; }
+.rope-3 { animation: sway3 8s ease-in-out infinite alternate; animation-delay: -2s; }
+.rope-4 { animation: sway1 6.5s ease-in-out infinite alternate; animation-delay: -3s; }
+.rope-5 { animation: sway2 7.5s ease-in-out infinite alternate; animation-delay: -4s; }
+.rope-6 { animation: sway3 8.5s ease-in-out infinite alternate; animation-delay: -5s; }
 
 @keyframes sway1 {
-    0%, 100% { transform: translateX(0px) rotate(0deg); }
-    25% { transform: translateX(-15px) rotate(-3deg); }
-    50% { transform: translateX(10px) rotate(2deg); }
-    75% { transform: translateX(-5px) rotate(-1deg); }
+    from { transform: rotate(-15deg); }
+    to { transform: rotate(15deg); }
 }
 
 @keyframes sway2 {
-    0%, 100% { transform: translateX(0px) rotate(0deg); }
-    25% { transform: translateX(12px) rotate(2.5deg); }
-    50% { transform: translateX(-8px) rotate(-1.5deg); }
-    75% { transform: translateX(4px) rotate(1deg); }
+    from { transform: rotate(12deg); }
+    to { transform: rotate(-12deg); }
 }
 
 @keyframes sway3 {
-    0%, 100% { transform: translateX(0px) rotate(0deg); }
-    25% { transform: translateX(-10px) rotate(-2deg); }
-    50% { transform: translateX(15px) rotate(3deg); }
-    75% { transform: translateX(-7px) rotate(-1.5deg); }
+    from { transform: rotate(-18deg); }
+    to { transform: rotate(18deg); }
 }
 
 /* Shape Glow Animation - Enhanced */
@@ -445,11 +439,3 @@ body {
 
 /* Additional Shape Rotation Animation */
 /* Removed 360-degree rotation as per user feedback */
-
-/* Wind Effect - Subtle horizontal movement */
-@keyframes windSway {
-    0%, 100% { transform: translateX(0px); }
-    25% { transform: translateX(2px); }
-    50% { transform: translateX(0px); }
-    75% { transform: translateX(-2px); }
-}
