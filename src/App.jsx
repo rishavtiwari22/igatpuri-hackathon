@@ -1,10 +1,14 @@
+// App.jsx
 import React from "react";
+import HangingShapes from "./components/HangingShapes";
 import "./App.css";
 
-export default function App() {
+function App() {
   return (
-    <div className="container">
-      
+    <div className="app">
+      <HangingShapes />
     </div>
   );
 }
+
+export default App;

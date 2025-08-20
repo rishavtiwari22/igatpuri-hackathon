@@ -1,4 +1,5 @@
 # Logs
+.copilot-instruction.md
 logs
 *.log
 npm-debug.log*

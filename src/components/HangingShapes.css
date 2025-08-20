@@ -1,0 +1,540 @@
+/* Hanging Shapes Animation */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background: linear-gradient(135deg, #f5f1e8 0%, #ede3d3 50%, #e8dcc0 100%);
+    min-height: 100vh;
+    overflow: hidden;
+    font-family: 'Arial', sans-serif;
+    position: relative;
+}
+
+.container {
+    width: 100%;
+    height: 100vh;
+    position: relative;
+}
+
+/* Ceiling */
+.ceiling {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 8px;
+    background: linear-gradient(180deg, #8b6914 0%, #a67c1a 50%, #c4942a 100%);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+    z-index: 10;
+}
+
+/* Hanging System */
+.hanging-system {
+    position: absolute;
+    top: 8px;
+    transform-origin: top center;
+    z-index: 5;
+}
+
+/* Hooks */
+.hook {
+    width: 12px;
+    height: 8px;
+    background: linear-gradient(45deg, #666, #999);
+    border-radius: 2px 2px 50% 50%;
+    margin: 0 auto;
+    position: relative;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+    z-index: 15;
+}
+
+.hook::before {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 6px;
+    height: 4px;
+    background: #555;
+    border-radius: 50% 50% 0 0;
+}
+
+/* Ropes */
+.rope {
+    width: 4px;
+    height: 280px;
+    background: linear-gradient(90deg, 
+        #8b6914 0%, 
+        #a67c1a 25%, 
+        #c4942a 50%, 
+        #a67c1a 75%, 
+        #8b6914 100%);
+    margin: 0 auto;
+    position: relative;
+    border-radius: 2px;
+    box-shadow: 
+        inset 1px 0 0 rgba(255, 255, 255, 0.4),
+        inset -1px 0 0 rgba(0, 0, 0, 0.3),
+        3px 0 6px rgba(0, 0, 0, 0.2);
+    transform-origin: top center;
+}
+
+.rope::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 1px;
+    height: 100%;
+    background: repeating-linear-gradient(
+        to bottom,
+        rgba(255, 255, 255, 0.4) 0px,
+        rgba(255, 255, 255, 0.4) 2px,
+        transparent 2px,
+        transparent 4px
+    );
+}
+
+/* Shapes Base */
+.shape {
+    width: 80px;
+    height: 80px;
+    position: relative;
+    margin: 0 auto;
+    transform-origin: center;
+    filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.3));
+}
+
+.shape-inner {
+    width: 100%;
+    height: 100%;
+    border-radius: inherit;
+    position: relative;
+    overflow: hidden;
+}
+
+.shape-inner::before {
+    content: '';
+    position: absolute;
+    top: 10%;
+    left: 10%;
+    width: 30%;
+    height: 30%;
+    background: rgba(255, 255, 255, 0.6);
+    border-radius: 50%;
+    filter: blur(8px);
+}
+
+/* Circle */
+.circle {
+    border-radius: 50%;
+    background: linear-gradient(135deg, #ff1744 0%, #ff4569 25%, #ff6b8a 50%, #ff8fab 75%, #ffb3c6 100%);
+    box-shadow: 
+        inset 0 3px 6px rgba(255, 255, 255, 0.5),
+        inset 0 -3px 6px rgba(0, 0, 0, 0.2),
+        0 0 20px rgba(255, 23, 68, 0.4);
+}
+
+/* Square */
+.square {
+    border-radius: 12px;
+    background: linear-gradient(135deg, #00bcd4 0%, #26c6da 25%, #4ecdc4 50%, #6ee5dd 75%, #8ff0ea 100%);
+    box-shadow: 
+        inset 0 3px 6px rgba(255, 255, 255, 0.5),
+        inset 0 -3px 6px rgba(0, 0, 0, 0.2),
+        0 0 20px rgba(0, 188, 212, 0.4);
+}
+
+/* Triangle */
+.triangle {
+    width: 0;
+    height: 0;
+    border-left: 40px solid transparent;
+    border-right: 40px solid transparent;
+    border-bottom: 70px solid #ff6f00;
+    background: none;
+    border-radius: 0;
+    position: relative;
+    filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.3)) drop-shadow(0 0 20px rgba(255, 111, 0, 0.4));
+}
+
+.triangle::before {
+    content: '';
+    position: absolute;
+    top: 10px;
+    left: -32px;
+    width: 0;
+    height: 0;
+    border-left: 32px solid transparent;
+    border-right: 32px solid transparent;
+    border-bottom: 56px solid #ff8f00;
+}
+
+.triangle::after {
+    content: '';
+    position: absolute;
+    top: 20px;
+    left: -20px;
+    width: 0;
+    height: 0;
+    border-left: 20px solid transparent;
+    border-right: 20px solid transparent;
+    border-bottom: 35px solid #ffb300;
+}
+
+/* Diamond */
+.diamond {
+    transform: rotate(45deg);
+    border-radius: 12px;
+    background: linear-gradient(135deg, #7c3aed 0%, #8b5cf6 25%, #a78bfa 50%, #c4b5fd 75%, #ddd6fe 100%);
+    box-shadow: 
+        inset 0 3px 6px rgba(255, 255, 255, 0.5),
+        inset 0 -3px 6px rgba(0, 0, 0, 0.2),
+        0 0 20px rgba(124, 58, 237, 0.4);
+}
+
+/* Hexagon */
+.hexagon {
+    width: 80px;
+    height: 70px;
+    background: linear-gradient(135deg, #059669 0%, #10b981 25%, #34d399 50%, #6ee7b7 75%, #a7f3d0 100%);
+    position: relative;
+    border-radius: 8px;
+    box-shadow: 
+        inset 0 3px 6px rgba(255, 255, 255, 0.5),
+        inset 0 -3px 6px rgba(0, 0, 0, 0.2),
+        0 0 20px rgba(5, 150, 105, 0.4);
+}
+
+.hexagon::before,
+.hexagon::after {
+    content: '';
+    position: absolute;
+    width: 0;
+    border-left: 40px solid transparent;
+    border-right: 40px solid transparent;
+}
+
+.hexagon::before {
+    bottom: 100%;
+    border-bottom: 20px solid #059669;
+}
+
+.hexagon::after {
+    top: 100%;
+    border-top: 20px solid #059669;
+}
+
+/* Star */
+.star {
+    position: relative;
+    width: 80px;
+    height: 80px;
+    background: none;
+    filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.3)) drop-shadow(0 0 20px rgba(245, 158, 11, 0.4));
+}
+
+.star::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border-left: 40px solid transparent;
+    border-right: 40px solid transparent;
+    border-bottom: 30px solid #d97706;
+}
+
+.star::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%) rotate(180deg);
+    width: 0;
+    height: 0;
+    border-left: 40px solid transparent;
+    border-right: 40px solid transparent;
+    border-bottom: 30px solid #d97706;
+}
+
+.star .shape-inner::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) rotate(60deg);
+    width: 0;
+    height: 0;
+    border-left: 40px solid transparent;
+    border-right: 40px solid transparent;
+    border-bottom: 30px solid #f59e0b;
+}
+
+.star .shape-inner::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) rotate(-60deg);
+    width: 0;
+    height: 0;
+    border-left: 40px solid transparent;
+    border-right: 40px solid transparent;
+    border-bottom: 30px solid #f59e0b;
+}
+
+/* Swing Animations - More Realistic Physics */
+.rope-1 { 
+    animation: swing1 5.2s cubic-bezier(0.445, 0.05, 0.55, 0.95) infinite;
+    animation-delay: 0s;
+}
+.rope-2 { 
+    animation: swing2 4.8s cubic-bezier(0.25, 0.46, 0.45, 0.94) infinite;
+    animation-delay: -0.5s;
+}
+.rope-3 { 
+    animation: swing3 5.5s cubic-bezier(0.39, 0.575, 0.565, 1) infinite;
+    animation-delay: -1s;
+}
+.rope-4 { 
+    animation: swing4 4.6s cubic-bezier(0.55, 0.085, 0.68, 0.53) infinite;
+    animation-delay: -1.5s;
+}
+.rope-5 { 
+    animation: swing5 5.8s cubic-bezier(0.25, 0.46, 0.45, 0.94) infinite;
+    animation-delay: -2s;
+}
+.rope-6 { 
+    animation: swing6 4.3s cubic-bezier(0.445, 0.05, 0.55, 0.95) infinite;
+    animation-delay: -2.5s;
+}
+
+@keyframes swing1 {
+    0% { transform: rotate(-2deg); }
+    15% { transform: rotate(12deg); }
+    30% { transform: rotate(-8deg); }
+    45% { transform: rotate(6deg); }
+    60% { transform: rotate(-4deg); }
+    75% { transform: rotate(3deg); }
+    90% { transform: rotate(-1deg); }
+    100% { transform: rotate(-2deg); }
+}
+
+@keyframes swing2 {
+    0% { transform: rotate(1deg); }
+    20% { transform: rotate(-15deg); }
+    35% { transform: rotate(10deg); }
+    50% { transform: rotate(-7deg); }
+    65% { transform: rotate(5deg); }
+    80% { transform: rotate(-3deg); }
+    95% { transform: rotate(2deg); }
+    100% { transform: rotate(1deg); }
+}
+
+@keyframes swing3 {
+    0% { transform: rotate(3deg); }
+    18% { transform: rotate(18deg); }
+    32% { transform: rotate(-12deg); }
+    48% { transform: rotate(9deg); }
+    62% { transform: rotate(-6deg); }
+    78% { transform: rotate(4deg); }
+    92% { transform: rotate(-2deg); }
+    100% { transform: rotate(3deg); }
+}
+
+@keyframes swing4 {
+    0% { transform: rotate(-1deg); }
+    22% { transform: rotate(-14deg); }
+    38% { transform: rotate(11deg); }
+    52% { transform: rotate(-8deg); }
+    68% { transform: rotate(6deg); }
+    82% { transform: rotate(-4deg); }
+    94% { transform: rotate(2deg); }
+    100% { transform: rotate(-1deg); }
+}
+
+@keyframes swing5 {
+    0% { transform: rotate(2deg); }
+    25% { transform: rotate(16deg); }
+    40% { transform: rotate(-13deg); }
+    55% { transform: rotate(9deg); }
+    70% { transform: rotate(-6deg); }
+    85% { transform: rotate(4deg); }
+    95% { transform: rotate(-2deg); }
+    100% { transform: rotate(2deg); }
+}
+
+@keyframes swing6 {
+    0% { transform: rotate(-3deg); }
+    28% { transform: rotate(-20deg); }
+    42% { transform: rotate(14deg); }
+    58% { transform: rotate(-10deg); }
+    72% { transform: rotate(7deg); }
+    86% { transform: rotate(-4deg); }
+    96% { transform: rotate(2deg); }
+    100% { transform: rotate(-3deg); }
+}
+
+/* Shape Glow Animation - Enhanced */
+.circle { animation: glowPink 4s ease-in-out infinite alternate; }
+.square { animation: glowCyan 4.5s ease-in-out infinite alternate; }
+.triangle { animation: glowOrange 3.8s ease-in-out infinite alternate; }
+.diamond { animation: glowPurple 5.2s ease-in-out infinite alternate; }
+.hexagon { animation: glowGreen 4.8s ease-in-out infinite alternate; }
+.star { animation: glowYellow 3.5s ease-in-out infinite alternate; }
+
+@keyframes glowPink {
+    0% {
+        filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.3)) 
+                drop-shadow(0 0 15px rgba(255, 23, 68, 0.4))
+                brightness(1);
+        transform: scale(1);
+    }
+    100% {
+        filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.4)) 
+                drop-shadow(0 0 30px rgba(255, 23, 68, 0.7))
+                brightness(1.2);
+        transform: scale(1.05);
+    }
+}
+
+@keyframes glowCyan {
+    0% {
+        filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.3)) 
+                drop-shadow(0 0 15px rgba(0, 188, 212, 0.4))
+                brightness(1);
+        transform: scale(1);
+    }
+    100% {
+        filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.4)) 
+                drop-shadow(0 0 30px rgba(0, 188, 212, 0.7))
+                brightness(1.2);
+        transform: scale(1.05);
+    }
+}
+
+@keyframes glowOrange {
+    0% {
+        filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.3)) 
+                drop-shadow(0 0 15px rgba(255, 111, 0, 0.4))
+                brightness(1);
+        transform: scale(1);
+    }
+    100% {
+        filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.4)) 
+                drop-shadow(0 0 30px rgba(255, 111, 0, 0.7))
+                brightness(1.2);
+        transform: scale(1.05);
+    }
+}
+
+@keyframes glowPurple {
+    0% {
+        filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.3)) 
+                drop-shadow(0 0 15px rgba(124, 58, 237, 0.4))
+                brightness(1);
+        transform: scale(1) rotate(45deg);
+    }
+    100% {
+        filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.4)) 
+                drop-shadow(0 0 30px rgba(124, 58, 237, 0.7))
+                brightness(1.2);
+        transform: scale(1.05) rotate(45deg);
+    }
+}
+
+@keyframes glowGreen {
+    0% {
+        filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.3)) 
+                drop-shadow(0 0 15px rgba(5, 150, 105, 0.4))
+                brightness(1);
+        transform: scale(1);
+    }
+    100% {
+        filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.4)) 
+                drop-shadow(0 0 30px rgba(5, 150, 105, 0.7))
+                brightness(1.2);
+        transform: scale(1.05);
+    }
+}
+
+@keyframes glowYellow {
+    0% {
+        filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.3)) 
+                drop-shadow(0 0 15px rgba(245, 158, 11, 0.4))
+                brightness(1);
+        transform: scale(1);
+    }
+    100% {
+        filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.4)) 
+                drop-shadow(0 0 30px rgba(245, 158, 11, 0.7))
+                brightness(1.2);
+        transform: scale(1.05);
+    }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .hanging-system {
+        transform: scale(0.8);
+    }
+    
+    .rope {
+        height: 200px;
+    }
+}
+
+@media (max-width: 480px) {
+    .hanging-system {
+        transform: scale(0.6);
+    }
+    
+    .rope {
+        height: 150px;
+    }
+}
+
+/* Additional Shape Rotation Animation */
+.circle .shape-inner { animation: rotateClockwise 8s linear infinite; }
+.square .shape-inner { animation: rotateCounterClockwise 12s linear infinite; }
+.triangle .shape-inner { animation: rotateClockwise 10s linear infinite; }
+.hexagon .shape-inner { animation: rotateCounterClockwise 15s linear infinite; }
+
+@keyframes rotateClockwise {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+@keyframes rotateCounterClockwise {
+    from { transform: rotate(360deg); }
+    to { transform: rotate(0deg); }
+}
+
+/* Wind Effect - Subtle horizontal movement */
+.hanging-system {
+    animation: windSway 6s ease-in-out infinite;
+}
+
+.hanging-system:nth-child(odd) {
+    animation-delay: -1s;
+}
+
+.hanging-system:nth-child(even) {
+    animation-delay: -3s;
+}
+
+@keyframes windSway {
+    0%, 100% { transform: translateX(0px); }
+    25% { transform: translateX(2px); }
+    50% { transform: translateX(0px); }
+    75% { transform: translateX(-2px); }
+}
