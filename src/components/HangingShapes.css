@@ -70,7 +70,7 @@ body {
 /* Ropes */
 .rope {
     width: 5px;
-    height: 250px;
+    height: 120px;
     background: linear-gradient(90deg, 
         #8b6914 0%, 
         #a67c1a 25%, 
