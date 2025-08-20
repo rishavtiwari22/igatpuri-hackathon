@@ -17,14 +17,16 @@ export default function HangingShapes() {
       <div className="ceiling"></div>
       {shapes.map((shape, index) => (
         <div
-          className={`hanging-system ${shape.rope}`}
+          className="hanging-system"
           style={{ left: shape.left }}
           key={index}
         >
           <div className="hook"></div>
-          <div className="rope"></div>
-          <div className={`shape ${shape.type}`}>
-            <div className="shape-inner"></div>
+          <div className={`swing-container ${shape.rope}`}>
+            <div className="rope"></div>
+            <div className={`shape ${shape.type}`}>
+              <div className="shape-inner"></div>
+            </div>
           </div>
         </div>
       ))}
