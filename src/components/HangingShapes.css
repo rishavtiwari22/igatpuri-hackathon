@@ -293,29 +293,29 @@ body {
 }
 
 /* Swing Animations - More Realistic Physics */
-.rope-1 { 
-    animation: swing1 5.2s cubic-bezier(0.445, 0.05, 0.55, 0.95) infinite;
-    animation-delay: 0s;
+.rope-1 {
+    animation: swing1 5.2s cubic-bezier(0.445, 0.05, 0.55, 0.95) infinite, windSway 6s ease-in-out infinite;
+    animation-delay: 0s, -1s;
 }
-.rope-2 { 
-    animation: swing2 4.8s cubic-bezier(0.25, 0.46, 0.45, 0.94) infinite;
-    animation-delay: -0.5s;
+.rope-2 {
+    animation: swing2 4.8s cubic-bezier(0.25, 0.46, 0.45, 0.94) infinite, windSway 6s ease-in-out infinite;
+    animation-delay: -0.5s, -3s;
 }
-.rope-3 { 
-    animation: swing3 5.5s cubic-bezier(0.39, 0.575, 0.565, 1) infinite;
-    animation-delay: -1s;
+.rope-3 {
+    animation: swing3 5.5s cubic-bezier(0.39, 0.575, 0.565, 1) infinite, windSway 6s ease-in-out infinite;
+    animation-delay: -1s, -1s;
 }
-.rope-4 { 
-    animation: swing4 4.6s cubic-bezier(0.55, 0.085, 0.68, 0.53) infinite;
-    animation-delay: -1.5s;
+.rope-4 {
+    animation: swing4 4.6s cubic-bezier(0.55, 0.085, 0.68, 0.53) infinite, windSway 6s ease-in-out infinite;
+    animation-delay: -1.5s, -3s;
 }
-.rope-5 { 
-    animation: swing5 5.8s cubic-bezier(0.25, 0.46, 0.45, 0.94) infinite;
-    animation-delay: -2s;
+.rope-5 {
+    animation: swing5 5.8s cubic-bezier(0.25, 0.46, 0.45, 0.94) infinite, windSway 6s ease-in-out infinite;
+    animation-delay: -2s, -1s;
 }
-.rope-6 { 
-    animation: swing6 4.3s cubic-bezier(0.445, 0.05, 0.55, 0.95) infinite;
-    animation-delay: -2.5s;
+.rope-6 {
+    animation: swing6 4.3s cubic-bezier(0.445, 0.05, 0.55, 0.95) infinite, windSway 6s ease-in-out infinite;
+    animation-delay: -2.5s, -3s;
 }
 
 @keyframes swing1 {
@@ -520,18 +520,6 @@ body {
 }
 
 /* Wind Effect - Subtle horizontal movement */
-.hanging-system {
-    animation: windSway 6s ease-in-out infinite;
-}
-
-.hanging-system:nth-child(odd) {
-    animation-delay: -1s;
-}
-
-.hanging-system:nth-child(even) {
-    animation-delay: -3s;
-}
-
 @keyframes windSway {
     0%, 100% { transform: translateX(0px); }
     25% { transform: translateX(2px); }
