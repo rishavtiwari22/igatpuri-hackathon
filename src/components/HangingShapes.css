@@ -10,7 +10,7 @@ body {
     background: linear-gradient(135deg, #f5f1e8 0%, #ede3d3 50%, #e8dcc0 100%);
     min-height: 100vh;
     overflow: hidden;
-    font-family: 'Arial', sans-serif;
+    font-family: 'Poppins', sans-serif;
     position: relative;
 }
 
@@ -112,6 +112,11 @@ body {
     margin: 0 auto;
     transform-origin: center;
     filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.3));
+    transition: transform 0.2s ease-in-out;
+}
+
+.shape:hover {
+    transform: scale(1.1);
 }
 
 .shape-inner {
@@ -473,20 +478,37 @@ body {
 
 .prompt-input {
     width: 100%;
-    padding: 10px;
-    border-radius: 5px;
+    padding: 12px;
+    border-radius: 25px;
     border: 1px solid #ccc;
     margin-bottom: 10px;
+    font-family: 'Poppins', sans-serif;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    transition: box-shadow 0.3s ease;
+}
+
+.prompt-input:focus {
+    outline: none;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
 }
 
 .generate-button {
-    padding: 10px 20px;
-    border-radius: 5px;
+    padding: 12px 20px;
+    border-radius: 25px;
     border: none;
-    background-color: #4CAF50;
+    background: linear-gradient(45deg, #ff6b6b, #f06595);
     color: white;
     cursor: pointer;
     width: 100%;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 700;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.generate-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(0,0,0,0.3);
 }
 
 .main-content {
@@ -509,8 +531,8 @@ body {
 }
 
 .image-placeholder {
-    width: 300px;
-    height: 200px;
+    width: 350px;
+    height: 250px;
     border: 2px dashed #ccc;
     border-radius: 10px;
     display: flex;
@@ -521,8 +543,8 @@ body {
 }
 
 .generated-image-placeholder, .feedback-placeholder {
-    width: 300px;
-    height: 200px;
+    width: 350px;
+    height: 250px;
     border: 2px dashed #ccc;
     border-radius: 10px;
     display: flex;
