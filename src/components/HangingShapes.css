@@ -442,19 +442,20 @@ body {
 
 /* Image Display */
 .image-display {
-    margin: 20px auto;
     z-index: 20;
-    border: 5px solid #fff;
     border-radius: 10px;
-    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
     overflow: hidden;
-    width: 300px;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }
 
 .image-display img {
-    width: 300px;
-    height: auto;
-    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
 }
 
 /* New Layout Styles */
@@ -463,16 +464,19 @@ body {
 }
 
 .generation-controls {
-    text-align: center;
-    margin-bottom: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-top: 20px;
+    width: 80%;
 }
 
 .prompt-input {
-    width: 400px;
+    width: 100%;
     padding: 10px;
     border-radius: 5px;
     border: 1px solid #ccc;
-    margin-right: 10px;
+    margin-bottom: 10px;
 }
 
 .generate-button {
@@ -482,6 +486,7 @@ body {
     background-color: #4CAF50;
     color: white;
     cursor: pointer;
+    width: 100%;
 }
 
 .main-content {
@@ -491,6 +496,28 @@ body {
 
 .left-panel, .right-panel {
     width: 45%;
+    min-height: 350px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.left-panel {
+    /* border: 2px dashed #ccc; */
+    border-radius: 10px;
+    /* padding: 20px; */
+}
+
+.image-placeholder {
+    width: 300px;
+    height: 200px;
+    border: 2px dashed #ccc;
+    border-radius: 10px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: #999;
+    margin: 20px auto;
 }
 
 .generated-image-placeholder, .feedback-placeholder {

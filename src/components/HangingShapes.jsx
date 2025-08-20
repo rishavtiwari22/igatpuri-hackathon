@@ -51,26 +51,27 @@ export default function HangingShapes() {
         ))}
       </div>
 
-      <div className="generation-controls">
-        <input
-          type="text"
-          value={prompt}
-          onChange={(e) => setPrompt(e.target.value)}
-          placeholder="Enter a prompt to generate an image"
-          className="prompt-input"
-        />
-        <button onClick={handleGenerateClick} className="generate-button">
-          Generate Image
-        </button>
-      </div>
-
       <div className="main-content">
         <div className="left-panel">
-          {selectedImage && (
-            <div className="image-display">
-              <img src={selectedImage} alt="Selected Shape" />
-            </div>
-          )}
+          <div className="image-placeholder">
+            {selectedImage && (
+              <div className="image-display">
+                <img src={selectedImage} alt="Selected Shape" />
+              </div>
+            )}
+          </div>
+          <div className="generation-controls">
+            <input
+              type="text"
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
+              placeholder="Enter a prompt to generate an image"
+              className="prompt-input"
+            />
+            <button onClick={handleGenerateClick} className="generate-button">
+              Generate Image
+            </button>
+          </div>
         </div>
         <div className="right-panel">
           <div className="generated-image-placeholder">
