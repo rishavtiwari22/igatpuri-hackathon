@@ -42,11 +42,15 @@ function generateInitialState(windowSize) {
   return {
     active: true,
     excited: false,
+    isPaused: false,
+    isDying: false, // For death animation
+    isDead: false, // To remove from DOM
     x: Math.random() * windowSize.width,
     y: Math.random() * windowSize.height,
     direction: Math.random() * 2 * Math.PI,
     prevX: 0,
     prevY: 0,
+    trail: [], // For fading trail
     downtime: 1,
     bugType: getRandomBugType(),
   };
@@ -54,8 +58,8 @@ function generateInitialState(windowSize) {
 
 function reducer(state, action) {
   switch (action.type) {
-    case "timeStep":
-      if (!state.active) {
+    case "timeStep": {
+      if (!state.active || state.isPaused) { // Check if paused
         return state;
       }
 
@@ -108,9 +112,14 @@ function reducer(state, action) {
         }
       }
 
-      return { ...state, x: newX, y: newY, direction: newDirection, prevX: state.x, prevY: state.y };
+      const newTrail = [...state.trail, { x: state.x, y: state.y }];
+      if (newTrail.length > 20) {
+        newTrail.shift();
+      }
 
-    case "scare":
+      return { ...state, x: newX, y: newY, direction: newDirection, prevX: state.x, prevY: state.y, trail: newTrail };
+    }
+    case "scare": {
       if (!state.active || state.excited) {
         return state;
       }
@@ -121,23 +130,21 @@ function reducer(state, action) {
       );
 
       return { ...state, excited: true };
-
+    }
     case "calm":
       return { ...state, excited: false };
-    case "squash":
+    case "squash": {
       if (!state.active) {
         return state;
       }
-
-      setTimeout(
-        () => action.dispatch({ type: "wakeUp" }),
-        state.downtime * 1000
-      );
-
-      return { ...state, active: false, downtime: state.downtime + 1 };
-
-    case "wakeUp":
-      return { ...state, active: true };
+      return { ...state, active: false, isDying: true };
+    }
+    case "dead":
+      return { ...state, isDead: true };
+    case "pause":
+      return { ...state, isPaused: true };
+    case "resume":
+      return { ...state, isPaused: false };
     default:
       return state;
   }
@@ -187,10 +194,26 @@ function Bug(props) {
     return deltaX > 0 ? 'right' : 'left';
   };
 
+  if (state.isDead) {
+    return null;
+  }
+
   return (
     <>
+      {state.trail.map((p, i) => (
+        <div
+          key={i}
+          className="trail-particle"
+          style={{
+            left: p.x,
+            top: p.y,
+            opacity: (i + 1) / state.trail.length,
+            backgroundColor: BUG_TYPES[state.bugType].color,
+          }}
+        />
+      ))}
       <div
-        className={`Bug ${state.bugType} ${!state.active ? 'squashed' : ''} ${state.excited ? 'excited' : ''}`}
+        className={`Bug ${state.bugType} ${!state.active ? 'squashed' : ''} ${state.excited ? 'excited' : ''} ${state.isPaused ? 'paused' : ''} ${state.isDying ? 'dying' : ''}`}
         data-direction={movementDirection()}
         style={{
           left: state.x,
@@ -198,7 +221,14 @@ function Bug(props) {
           height: SIZE,
           width: SIZE,
         }}
-        onClick={() => dispatch({ type: "squash", dispatch: dispatch })}
+        onMouseEnter={() => dispatch({ type: "pause" })}
+        onMouseLeave={() => dispatch({ type: "resume" })}
+        onDoubleClick={() => dispatch({ type: "squash", dispatch: dispatch })}
+        onAnimationEnd={() => {
+          if (state.isDying) {
+            dispatch({ type: 'dead' });
+          }
+        }}
       >
         <div className="bug-abdomen"></div>
         <div className="bug-wings"></div>
@@ -299,10 +329,6 @@ function BugGame() {
 
     return () => clearInterval(addBugInterval);
   }, [gameState.bugCount]);
-
-  const resetGame = () => {
-    gameDispatch({ type: 'reset' });
-  };
 
   return (
     <div className="bugGameContainer">      
