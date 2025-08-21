@@ -1,11 +1,17 @@
 // HangingShapes.jsx
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import "./HangingShapes.css";
 import image1 from "../assets/car.jpg";
 import image2 from "../assets/horse.jpg";
 import image3 from "../assets/line_mountain.jpg";
 import image4 from "../assets/oul.jpg";
 import image5 from "../assets/sheep.avif";
+
+import image6 from "./images/car.png";
+import image7 from "./images/foxes.png";
+import image8 from "./images/llama.jpg";
+import image9 from "./images/owl.png";
+import image10 from "./images/van.jpg";
 
 const shapes = [
   { type: "circle", left: "10%", rope: "rope-1", image: image1 },
@@ -18,15 +24,41 @@ const shapes = [
 
 export default function HangingShapes() {
   const [selectedImage, setSelectedImage] = useState(null);
+  const [AIGeneratedimg, setAIGeneratedimg] = useState(null);
   const [prompt, setPrompt] = useState("");
+
+  const images = [image6, image7, image8, image9, image10];
+
+  // Pick a random image from `images`
+  function pickRandomImage() {
+    const randomIndex = Math.floor(Math.random() * images.length);
+    setSelectedImage(images[randomIndex]);
+  }
+
+  // On mount → automatically set a random image
+  useEffect(() => {
+    pickRandomImage();
+  }, []);
 
   const handleShapeClick = (image) => {
     setSelectedImage(image);
   };
 
+  const handleGenImg = (image) => {
+    setAIGeneratedimg(image);
+  };
+
   const handleGenerateClick = () => {
-    // Placeholder for image generation logic
-    console.log("Generate image with prompt:", prompt);
+    const width = 1024;
+    const height = 1024;
+    const seed = 42;
+    const model = "flux";
+    const imageUrl = `https://pollinations.ai/p/${encodeURIComponent(
+      prompt
+    )}?width=${width}&height=${height}&seed=${seed}&model=${model}`;
+
+    console.log("Generate image with prompt:", imageUrl);
+    handleGenImg(imageUrl);
   };
 
   return (
@@ -54,9 +86,9 @@ export default function HangingShapes() {
       <div className="main-content">
         <div className="left-panel">
           <div className="image-placeholder">
-            {selectedImage && (
+            {AIGeneratedimg && (
               <div className="image-display">
-                <img src={selectedImage} alt="Selected Shape" />
+                <img src={AIGeneratedimg} alt="AI Generated" />
               </div>
             )}
           </div>
@@ -75,7 +107,11 @@ export default function HangingShapes() {
         </div>
         <div className="right-panel">
           <div className="generated-image-placeholder">
-            <p>Generated image will appear here</p>
+            {selectedImage && (
+              <div className="image-display">
+                <img src={selectedImage} alt="Selected Shape" />
+              </div>
+            )}
           </div>
           <div className="feedback-placeholder">
             <p>Matching feedback will appear here</p>
