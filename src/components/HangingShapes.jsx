@@ -30,15 +30,15 @@ export default function HangingShapes() {
   const images = [image6, image7, image8, image9, image10];
 
   // Pick a random image from `images`
-  function pickRandomImage() {
-    const randomIndex = Math.floor(Math.random() * images.length);
-    setSelectedImage(images[randomIndex]);
-  }
+  // function pickRandomImage() {
+  //   const randomIndex = Math.floor(Math.random() * images.length);
+  //   setSelectedImage(images[randomIndex]);
+  // }
 
   // On mount → automatically set a random image
-  useEffect(() => {
-    pickRandomImage();
-  }, []);
+  // useEffect(() => {
+  //   pickRandomImage();
+  // }, []);
 
   const handleShapeClick = (image) => {
     setSelectedImage(image);
@@ -85,13 +85,15 @@ export default function HangingShapes() {
 
       <div className="main-content">
         <div className="left-panel">
-          <div className="image-placeholder">
-            {AIGeneratedimg && (
+
+          <div className="generated-image-placeholder">
+            {selectedImage ? (
               <div className="image-display">
-                <img src={AIGeneratedimg} alt="AI Generated" />
+                <img src={selectedImage} alt="Selected Shape" />
               </div>
-            )}
+            ) : <p>Target image will appear here</p>}
           </div>
+
           <div className="generation-controls">
             <input
               type="text"
@@ -106,12 +108,12 @@ export default function HangingShapes() {
           </div>
         </div>
         <div className="right-panel">
-          <div className="generated-image-placeholder">
-            {selectedImage && (
+          <div className="image-placeholder">
+            {AIGeneratedimg ? (
               <div className="image-display">
-                <img src={selectedImage} alt="Selected Shape" />
+                <img src={AIGeneratedimg} alt="AI Generated" />
               </div>
-            )}
+            ) : <p>Generate image will appear here</p>}
           </div>
           <div className="feedback-placeholder">
             <p>Matching feedback will appear here</p>
