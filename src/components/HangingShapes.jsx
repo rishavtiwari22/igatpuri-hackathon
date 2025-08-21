@@ -1,5 +1,6 @@
 // HangingShapes.jsx
 import React, { useState, useEffect } from "react";
+import ProgressTracker from "./ProgressTracker";
 import "./HangingShapes.css";
 import image1 from "../assets/car.jpg";
 import image2 from "../assets/horse.jpg";
@@ -26,6 +27,14 @@ export default function HangingShapes() {
   const [selectedImage, setSelectedImage] = useState(null);
   const [AIGeneratedimg, setAIGeneratedimg] = useState(null);
   const [prompt, setPrompt] = useState("");
+  const [unlockedShapes, setUnlockedShapes] = useState(() => {
+    const savedProgress = localStorage.getItem("unlockedShapes");
+    return savedProgress ? JSON.parse(savedProgress) : [0];
+  });
+
+  useEffect(() => {
+    localStorage.setItem("unlockedShapes", JSON.stringify(unlockedShapes));
+  }, [unlockedShapes]);
 
   const images = [image6, image7, image8, image9, image10];
 
@@ -40,8 +49,12 @@ export default function HangingShapes() {
   //   pickRandomImage();
   // }, []);
 
-  const handleShapeClick = (image) => {
-    setSelectedImage(image);
+  const handleShapeClick = (image, index) => {
+    if (unlockedShapes.includes(index)) {
+      setSelectedImage(image);
+    } else {
+      console.log("Shape is locked");
+    }
   };
 
   const handleGenImg = (image) => {
@@ -59,18 +72,26 @@ export default function HangingShapes() {
 
     console.log("Generate image with prompt:", imageUrl);
     handleGenImg(imageUrl);
+
+    // Unlock the next shape
+    if (unlockedShapes.length < shapes.length) {
+      setUnlockedShapes([...unlockedShapes, unlockedShapes.length]);
+    }
   };
 
   return (
     <div className="container">
+      <ProgressTracker unlockedShapes={unlockedShapes} shapes={shapes} />
       <div className="ceiling"></div>
       <div className="shapes-container">
         {shapes.map((shape, index) => (
           <div
-            className="hanging-system"
+            className={`hanging-system ${
+              !unlockedShapes.includes(index) ? "locked" : ""
+            }`}
             style={{ left: shape.left }}
             key={index}
-            onClick={() => handleShapeClick(shape.image)}
+            onClick={() => handleShapeClick(shape.image, index)}
           >
             <div className="hook"></div>
             <div className={`swing-container ${shape.rope}`}>

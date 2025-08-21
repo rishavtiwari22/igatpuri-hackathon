@@ -12,6 +12,7 @@ body {
     overflow: hidden;
     font-family: 'Poppins', sans-serif;
     position: relative;
+    font-size: 18px;
 }
 
 .container {
@@ -460,12 +461,12 @@ body {
 .image-display img {
     width: 100%;
     height: 100%;
-    object-fit: cover;
+    object-fit: contain;
 }
 
 /* New Layout Styles */
 .shapes-container {
-    height: 220px; /* Give space for the shapes to hang */
+    height: 250px; /* Give space for the shapes to hang */
 }
 
 .generation-controls {
@@ -532,8 +533,8 @@ body {
 }
 
 .image-placeholder {
-    width: 350px;
-    height: 250px;
+    width: 400px;
+    height: 300px;
     border: 2px dashed #ccc;
     border-radius: 10px;
     display: flex;
@@ -541,11 +542,12 @@ body {
     align-items: center;
     color: #999;
     margin: 20px auto;
+    font-size: 1.2rem;
 }
 
 .generated-image-placeholder, .feedback-placeholder {
-    width: 350px;
-    height: 250px;
+    width: 400px;
+    height: 300px;
     border: 2px dashed #ccc;
     border-radius: 10px;
     display: flex;
@@ -553,8 +555,15 @@ body {
     align-items: center;
     color: #999;
     margin: 20px auto;
+    font-size: 1.2rem;
 }
 
 .feedback-placeholder {
     height: 100px;
+}
+
+.locked {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
 }

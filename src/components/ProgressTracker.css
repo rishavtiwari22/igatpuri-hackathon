@@ -1,0 +1,133 @@
+/* ProgressTracker.css */
+.progress-tracker {
+  position: fixed;
+  left: 20px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(255, 255, 255, 0.8);
+  padding: 20px;
+  border-radius: 10px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  width: 200px;
+}
+
+.progress-tracker h3 {
+  text-align: center;
+  margin-bottom: 15px;
+  color: #333;
+}
+
+.progress-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.progress-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 5px;
+  border-radius: 5px;
+  transition: all 0.3s ease;
+}
+
+.progress-item.locked {
+  opacity: 0.4;
+}
+
+.progress-item.unlocked {
+  background: #e0f7fa;
+}
+
+.shape-preview {
+  width: 30px;
+  height: 30px;
+  position: relative;
+}
+
+/* Reusing shape styles from HangingShapes.css but scaled down */
+.shape-preview.circle {
+  border-radius: 50%;
+  background: #ff1744;
+}
+
+.shape-preview.square {
+  border-radius: 4px;
+  background: #00bcd4;
+}
+
+.shape-preview.triangle {
+  width: 0;
+  height: 0;
+  border-left: 15px solid transparent;
+  border-right: 15px solid transparent;
+  border-bottom: 26px solid #ff6f00;
+  background: none;
+}
+
+.shape-preview.diamond {
+  transform: rotate(45deg);
+  border-radius: 4px;
+  background: #7c3aed;
+}
+
+.shape-preview.hexagon {
+  width: 30px;
+  height: 26px;
+  background: #059669;
+  position: relative;
+  border-radius: 2px;
+}
+
+.shape-preview.hexagon::before,
+.shape-preview.hexagon::after {
+  content: '';
+  position: absolute;
+  width: 0;
+  border-left: 15px solid transparent;
+  border-right: 15px solid transparent;
+}
+
+.shape-preview.hexagon::before {
+  bottom: 100%;
+  border-bottom: 7.5px solid #059669;
+}
+
+.shape-preview.hexagon::after {
+  top: 100%;
+  border-top: 7.5px solid #059669;
+}
+
+.shape-preview.star {
+  position: relative;
+  width: 30px;
+  height: 30px;
+  background: none;
+}
+
+.shape-preview.star::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 15px solid transparent;
+  border-right: 15px solid transparent;
+  border-bottom: 11.25px solid #d97706;
+}
+
+.shape-preview.star::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%) rotate(180deg);
+  width: 0;
+  height: 0;
+  border-left: 15px solid transparent;
+  border-right: 15px solid transparent;
+  border-bottom: 11.25px solid #d97706;
+}
