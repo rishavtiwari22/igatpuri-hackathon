@@ -81,7 +81,6 @@ export default function HangingShapes() {
 
   return (
     <div className="container">
-      <ProgressTracker unlockedShapes={unlockedShapes} shapes={shapes} />
       <div className="ceiling"></div>
       <div className="shapes-container">
         {shapes.map((shape, index) => (
@@ -104,10 +103,12 @@ export default function HangingShapes() {
         ))}
       </div>
 
-      <div className="main-content">
-        <div className="left-panel">
+      <div className="app-body">
+        <ProgressTracker unlockedShapes={unlockedShapes} shapes={shapes} />
+        <div className="main-content">
+          <div className="left-panel">
 
-          <div className="generated-image-placeholder">
+            <div className="generated-image-placeholder">
             {selectedImage ? (
               <div className="image-display">
                 <img src={selectedImage} alt="Selected Shape" />
@@ -139,6 +140,7 @@ export default function HangingShapes() {
           <div className="feedback-placeholder">
             <p>Matching feedback will appear here</p>
           </div>
+        </div>
         </div>
       </div>
     </div>

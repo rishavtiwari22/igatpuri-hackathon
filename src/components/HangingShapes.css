@@ -515,7 +515,6 @@ body {
 
 .main-content {
     display: flex;
-    justify-content: space-around;
 }
 
 .left-panel, .right-panel {
@@ -560,6 +559,12 @@ body {
 
 .feedback-placeholder {
     height: 100px;
+}
+
+.app-body {
+  display: flex;
+  justify-content: space-between;
+  padding: 0 20px;
 }
 
 .locked {
