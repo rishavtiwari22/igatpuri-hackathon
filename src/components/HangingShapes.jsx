@@ -36,18 +36,18 @@ export default function HangingShapes() {
     localStorage.setItem("unlockedShapes", JSON.stringify(unlockedShapes));
   }, [unlockedShapes]);
 
-  const images = [image6, image7, image8, image9, image10];
+  const images = [image1, image2, image3, image4, image5];
 
   // Pick a random image from `images`
-  // function pickRandomImage() {
-  //   const randomIndex = Math.floor(Math.random() * images.length);
-  //   setSelectedImage(images[randomIndex]);
-  // }
+  function pickRandomImage() {
+    const randomIndex = 0;
+    setSelectedImage(images[randomIndex]);
+  }
 
   // On mount → automatically set a random image
-  // useEffect(() => {
-  //   pickRandomImage();
-  // }, []);
+  useEffect(() => {
+    pickRandomImage();
+  }, []);
 
   const handleShapeClick = (image, index) => {
     if (unlockedShapes.includes(index)) {
@@ -95,7 +95,9 @@ export default function HangingShapes() {
             <div className="hook"></div>
             <div className={`swing-container ${shape.rope}`}>
               <div className="rope"></div>
-              <div className={`shape ${shape.type}`}>
+              <div className={`shape ${shape.type} ${
+                unlockedShapes.includes(index) ? "filled" : ""
+              }`}>
                 <div className="shape-inner"></div>
               </div>
             </div>
@@ -104,43 +106,44 @@ export default function HangingShapes() {
       </div>
 
       <div className="app-body">
-        <ProgressTracker unlockedShapes={unlockedShapes} shapes={shapes} />
+        <div className="progress-tracker-wrapper">
+          <ProgressTracker unlockedShapes={unlockedShapes} shapes={shapes} />
+        </div>
         <div className="main-content">
           <div className="left-panel">
-
             <div className="generated-image-placeholder">
-            {selectedImage ? (
-              <div className="image-display">
-                <img src={selectedImage} alt="Selected Shape" />
-              </div>
-            ) : <p>Target image will appear here</p>}
-          </div>
+              {selectedImage ? (
+                <div className="image-display">
+                  <img src={selectedImage} alt="Selected Shape" />
+                </div>
+              ) : <p>Target image will appear here</p>}
+            </div>
 
-          <div className="generation-controls">
-            <input
-              type="text"
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
-              placeholder="Enter a prompt to generate an image"
-              className="prompt-input"
-            />
-            <button onClick={handleGenerateClick} className="generate-button">
-              Generate Image
-            </button>
+            <div className="generation-controls">
+              <input
+                type="text"
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+                placeholder="Enter a prompt to generate an image"
+                className="prompt-input"
+              />
+              <button onClick={handleGenerateClick} className="generate-button">
+                Generate Image
+              </button>
+            </div>
           </div>
-        </div>
-        <div className="right-panel">
-          <div className="image-placeholder">
-            {AIGeneratedimg ? (
-              <div className="image-display">
-                <img src={AIGeneratedimg} alt="AI Generated" />
-              </div>
-            ) : <p>Generate image will appear here</p>}
+          <div className="right-panel">
+            <div className="image-placeholder">
+              {AIGeneratedimg ? (
+                <div className="image-display">
+                  <img src={AIGeneratedimg} alt="AI Generated" />
+                </div>
+              ) : <p>Generate image will appear here</p>}
+            </div>
+            <div className="feedback-placeholder">
+              <p>Matching feedback will appear here</p>
+            </div>
           </div>
-          <div className="feedback-placeholder">
-            <p>Matching feedback will appear here</p>
-          </div>
-        </div>
         </div>
       </div>
     </div>

@@ -1,77 +1,287 @@
 /* ProgressTracker.css */
 .progress-tracker {
-  padding: 20px;
+  padding: 10px 5px;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 150px; /* Adjust width as needed */
-  height: 100vh;
+  width: 100%;
+  height: 100%;
+  position: relative;
 }
 
 .progress-list {
   display: flex;
   flex-direction: column;
-  gap: 20px; /* Increased gap for better spacing */
-  height: 100%;
-  justify-content: space-around;
+  gap: 20px;
+  height: 400px;
+  justify-content: flex-start;
+  align-items: center;
+  position: relative;
+  padding-top: 10px;
+}
+
+/* Vertical progress line starting from top */
+.progress-list::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 10px;
+  height: calc(100% - 20px);
+  width: 3px;
+  background: linear-gradient(to bottom, 
+    #4ade80 0%, 
+    #4ade80 var(--progress-percentage, 0%), 
+    #e0e0e0 var(--progress-percentage, 0%), 
+    #ccc 100%);
+  transform: translateX(-50%);
+  z-index: 1;
+  border-radius: 2px;
+  transition: background 0.5s ease;
 }
 
 .progress-item {
   display: flex;
   align-items: center;
   justify-content: center;
+  position: relative;
+  z-index: 2;
+  background: #f5f1e8;
+  border-radius: 50%;
+  width: 45px;
+  height: 45px;
+  transition: all 0.3s ease;
+  border: 2px solid #e0e0e0;
+}
+
+.progress-item.unlocked {
+  background: #fff;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.15);
+  border-color: #4ade80;
 }
 
 .progress-shape {
-  width: 40px; /* Larger shapes */
-  height: 40px;
+  width: 35px;
+  height: 35px;
   position: relative;
   background-color: transparent;
-  border: 3px solid #ccc; /* Default empty state */
-  transition: all 0.3s ease;
+  border: 2px solid #ccc;
+  transition: all 0.5s ease;
+  filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.2));
 }
 
 .progress-item.unlocked .progress-shape {
-  border-color: transparent; /* Remove border when filled */
+  border-color: transparent;
+  transform: scale(1.05);
 }
 
-/* Shape-specific styles for the empty state (border) */
+/* Circle - matches hanging shapes */
 .progress-shape.circle {
   border-radius: 50%;
+  border: 2px solid rgba(255, 0, 128, 0.8);
 }
 
+.progress-item.unlocked .progress-shape.circle {
+  background: linear-gradient(135deg, #ff0080 0%, #ff1493 15%, #ff69b4 30%, #ff1493 45%, #ff0080 60%, #e6005c 75%, #cc0052 90%, #b30047 100%);
+  box-shadow: 
+    inset 0 2px 6px rgba(255, 255, 255, 0.6),
+    inset 0 -2px 6px rgba(0, 0, 0, 0.3),
+    0 0 20px rgba(255, 0, 128, 0.8);
+}
+
+/* Square - matches hanging shapes */
 .progress-shape.square {
   border-radius: 6px;
+  border: 2px solid rgba(0, 150, 255, 0.8);
 }
 
+.progress-item.unlocked .progress-shape.square {
+  background: linear-gradient(135deg, #0096ff 0%, #00bfff 15%, #1e90ff 30%, #4169e1 45%, #0000ff 60%, #0000e6 75%, #0000cc 90%, #000080 100%);
+  box-shadow: 
+    inset 0 2px 6px rgba(255, 255, 255, 0.6),
+    inset 0 -2px 6px rgba(0, 0, 0, 0.3),
+    0 0 20px rgba(0, 150, 255, 0.8);
+}
+
+/* Triangle - matches hanging shapes */
 .progress-shape.triangle {
   width: 0;
   height: 0;
-  border-left: 20px solid transparent;
-  border-right: 20px solid transparent;
-  border-bottom: 35px solid #ccc;
+  border-left: 17.5px solid transparent;
+  border-right: 17.5px solid transparent;
+  border-bottom: 30px solid rgba(204, 85, 0, 0.8);
   background-color: transparent;
+  border-radius: 0;
 }
 
+.progress-item.unlocked .progress-shape.triangle {
+  border-bottom-color: #cc5500;
+  filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.4)) drop-shadow(0 0 20px rgba(204, 85, 0, 0.8));
+}
+
+.progress-item.unlocked .progress-shape.triangle::before {
+  content: '';
+  position: absolute;
+  top: 4px;
+  left: -14px;
+  width: 0;
+  height: 0;
+  border-left: 14px solid transparent;
+  border-right: 14px solid transparent;
+  border-bottom: 24px solid #e65c00;
+}
+
+.progress-item.unlocked .progress-shape.triangle::after {
+  content: '';
+  position: absolute;
+  top: 8px;
+  left: -8.75px;
+  width: 0;
+  height: 0;
+  border-left: 8.75px solid transparent;
+  border-right: 8.75px solid transparent;
+  border-bottom: 15px solid #ff9500;
+}
+
+/* Diamond - matches hanging shapes */
 .progress-shape.diamond {
   transform: rotate(45deg);
   border-radius: 6px;
+  border: 2px solid rgba(102, 32, 170, 0.8);
 }
 
+.progress-item.unlocked .progress-shape.diamond {
+  background: linear-gradient(135deg, #6620aa 0%, #7d2cb8 15%, #8b35c7 30%, #5d1a96 45%, #4a1575 60%, #3d1260 75%, #2f0e4a 90%, #220a35 100%);
+  box-shadow: 
+    inset 0 2px 6px rgba(255, 255, 255, 0.6),
+    inset 0 -2px 6px rgba(0, 0, 0, 0.3),
+    0 0 20px rgba(102, 32, 170, 0.8);
+}
+
+/* Hexagon - matches hanging shapes */
 .progress-shape.hexagon {
-  width: 40px;
-  height: 35px;
+  width: 35px;
+  height: 30px;
+  background: rgba(34, 139, 34, 0.6);
   border: none;
-  background: #ccc;
-  clip-path: polygon(25% 5%, 75% 5%, 100% 50%, 75% 95%, 25% 95%, 0% 50%);
+  position: relative;
+  border-radius: 4px;
 }
 
+.progress-shape.hexagon::before,
+.progress-shape.hexagon::after {
+  content: '';
+  position: absolute;
+  width: 0;
+  border-left: 17.5px solid transparent;
+  border-right: 17.5px solid transparent;
+}
+
+.progress-shape.hexagon::before {
+  bottom: 100%;
+  border-bottom: 8.75px solid rgba(34, 139, 34, 0.6);
+}
+
+.progress-shape.hexagon::after {
+  top: 100%;
+  border-top: 8.75px solid rgba(34, 139, 34, 0.6);
+}
+
+.progress-item.unlocked .progress-shape.hexagon {
+  background: linear-gradient(135deg, #228b22 0%, #32cd32 25%, #00ff00 50%, #00ff7f 75%, #00fa9a 100%);
+  box-shadow: 
+    inset 0 2px 6px rgba(255, 255, 255, 0.6),
+    inset 0 -2px 6px rgba(0, 0, 0, 0.3),
+    0 0 20px rgba(34, 139, 34, 0.6);
+}
+
+.progress-item.unlocked .progress-shape.hexagon::before {
+  border-bottom-color: #228b22;
+}
+
+.progress-item.unlocked .progress-shape.hexagon::after {
+  border-top-color: #228b22;
+}
+
+/* Star - matches hanging shapes */
 .progress-shape.star {
-  width: 40px;
-  height: 40px;
+  width: 35px;
+  height: 35px;
+  background: none;
   border: none;
-  background: #ccc;
-  clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+  position: relative;
+  filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.3)) drop-shadow(0 0 12px rgba(255, 215, 0, 0.3));
+}
+
+.progress-shape.star::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 17.5px solid transparent;
+  border-right: 17.5px solid transparent;
+  border-bottom: 13px solid rgba(255, 215, 0, 0.6);
+}
+
+.progress-shape.star::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%) rotate(180deg);
+  width: 0;
+  height: 0;
+  border-left: 17.5px solid transparent;
+  border-right: 17.5px solid transparent;
+  border-bottom: 13px solid rgba(255, 215, 0, 0.6);
+}
+
+.progress-shape.star .star-inner::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) rotate(60deg);
+  width: 0;
+  height: 0;
+  border-left: 17.5px solid transparent;
+  border-right: 17.5px solid transparent;
+  border-bottom: 13px solid rgba(255, 223, 0, 0.6);
+}
+
+.progress-shape.star .star-inner::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) rotate(-60deg);
+  width: 0;
+  height: 0;
+  border-left: 17.5px solid transparent;
+  border-right: 17.5px solid transparent;
+  border-bottom: 13px solid rgba(255, 223, 0, 0.6);
+}
+
+.progress-item.unlocked .progress-shape.star {
+  filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.3)) drop-shadow(0 0 20px rgba(255, 215, 0, 0.6));
+}
+
+.progress-item.unlocked .progress-shape.star::before {
+  border-bottom-color: #ffd700;
+}
+
+.progress-item.unlocked .progress-shape.star::after {
+  border-bottom-color: #ffd700;
+}
+
+.progress-item.unlocked .progress-shape.star .star-inner::before {
+  border-bottom-color: #ffdf00;
+}
+
+.progress-item.unlocked .progress-shape.star .star-inner::after {
+  border-bottom-color: #ffdf00;
 }
 
 

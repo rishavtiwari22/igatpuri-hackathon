@@ -8,7 +8,24 @@
 
 body {
     background: linear-gradient(135deg, #f5f1e8 0%, #ede3d3 50%, #e8dcc0 100%);
-    min-height: 100vh;
+   /* Triangle */
+.triangle {
+    width: 0;
+    height: 0;
+    border-left: 32.5px solid transparent;
+    border-right: 32.5px solid transparent;
+    border-bottom: 56.25px solid rgba(204, 85, 0, 0.8);
+    background: none;
+    border-radius: 0;
+    position: relative;
+    filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.4)) drop-shadow(0 0 20px rgba(204, 85, 0, 0.6));
+    transition: all 0.5s ease;
+}
+
+.triangle.filled {
+    border-bottom-color: #cc5500;
+    filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.4)) drop-shadow(0 0 30px rgba(204, 85, 0, 0.8)) drop-shadow(0 0 50px rgba(204, 85, 0, 0.5));
+};
     overflow: hidden;
     font-family: 'Poppins', sans-serif;
     position: relative;
@@ -143,21 +160,47 @@ body {
 /* Circle */
 .circle {
     border-radius: 50%;
-    background: linear-gradient(135deg, #ff1744 0%, #ff4569 25%, #ff6b8a 50%, #ff8fab 75%, #ffb3c6 100%);
+    background: transparent;
+    border: 3px solid rgba(255, 0, 128, 0.7);
     box-shadow: 
-        inset 0 3px 6px rgba(255, 255, 255, 0.5),
-        inset 0 -3px 6px rgba(0, 0, 0, 0.2),
-        0 0 20px rgba(255, 23, 68, 0.4);
+        inset 0 3px 6px rgba(255, 255, 255, 0.3),
+        inset 0 -3px 6px rgba(0, 0, 0, 0.15),
+        0 0 20px rgba(255, 0, 128, 0.5);
+    transition: all 0.5s ease;
+}
+
+.circle.filled {
+    background: linear-gradient(135deg, #ff0080 0%, #ff1493 15%, #ff69b4 30%, #ff1493 45%, #ff0080 60%, #e6005c 75%, #cc0052 90%, #b30047 100%);
+    border: none;
+    box-shadow: 
+        inset 0 4px 12px rgba(255, 255, 255, 0.8),
+        inset 0 -4px 12px rgba(0, 0, 0, 0.4),
+        0 0 30px rgba(255, 0, 128, 0.8),
+        0 0 50px rgba(255, 0, 128, 0.4),
+        0 0 80px rgba(255, 0, 128, 0.2);
 }
 
 /* Square */
 .square {
     border-radius: 12px;
-    background: linear-gradient(135deg, #00bcd4 0%, #26c6da 25%, #4ecdc4 50%, #6ee5dd 75%, #8ff0ea 100%);
+    background: transparent;
+    border: 3px solid rgba(0, 150, 255, 0.7);
     box-shadow: 
-        inset 0 3px 6px rgba(255, 255, 255, 0.5),
-        inset 0 -3px 6px rgba(0, 0, 0, 0.2),
-        0 0 20px rgba(0, 188, 212, 0.4);
+        inset 0 3px 6px rgba(255, 255, 255, 0.3),
+        inset 0 -3px 6px rgba(0, 0, 0, 0.15),
+        0 0 20px rgba(0, 150, 255, 0.5);
+    transition: all 0.5s ease;
+}
+
+.square.filled {
+    background: linear-gradient(135deg, #0096ff 0%, #00bfff 15%, #1e90ff 30%, #4169e1 45%, #0000ff 60%, #0000e6 75%, #0000cc 90%, #000080 100%);
+    border: none;
+    box-shadow: 
+        inset 0 4px 12px rgba(255, 255, 255, 0.8),
+        inset 0 -4px 12px rgba(0, 0, 0, 0.4),
+        0 0 30px rgba(0, 150, 255, 0.8),
+        0 0 50px rgba(0, 150, 255, 0.4),
+        0 0 80px rgba(0, 150, 255, 0.2);
 }
 
 /* Triangle */
@@ -166,14 +209,20 @@ body {
     height: 0;
     border-left: 32.5px solid transparent;
     border-right: 32.5px solid transparent;
-    border-bottom: 56.25px solid #ff6f00;
+    border-bottom: 56.25px solid rgba(255, 100, 0, 0.7);
     background: none;
     border-radius: 0;
     position: relative;
-    filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.3)) drop-shadow(0 0 20px rgba(255, 111, 0, 0.4));
+    filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.3)) drop-shadow(0 0 20px rgba(255, 100, 0, 0.5));
+    transition: all 0.5s ease;
 }
 
-.triangle::before {
+.triangle.filled {
+    border-bottom-color: #ff6400;
+    filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.3)) drop-shadow(0 0 30px rgba(255, 100, 0, 0.8)) drop-shadow(0 0 50px rgba(255, 100, 0, 0.4));
+}
+
+.triangle.filled::before {
     content: '';
     position: absolute;
     top: 8px;
@@ -182,10 +231,10 @@ body {
     height: 0;
     border-left: 26px solid transparent;
     border-right: 26px solid transparent;
-    border-bottom: 45px solid #ff8f00;
+    border-bottom: 45px solid #e65c00;
 }
 
-.triangle::after {
+.triangle.filled::after {
     content: '';
     position: absolute;
     top: 16px;
@@ -194,31 +243,57 @@ body {
     height: 0;
     border-left: 16.25px solid transparent;
     border-right: 16.25px solid transparent;
-    border-bottom: 28.125px solid #ffb300;
+    border-bottom: 28.125px solid #ff9500;
 }
 
 /* Diamond */
 .diamond {
     transform: rotate(45deg);
     border-radius: 12px;
-    background: linear-gradient(135deg, #7c3aed 0%, #8b5cf6 25%, #a78bfa 50%, #c4b5fd 75%, #ddd6fe 100%);
+    background: transparent;
+    border: 3px solid rgba(102, 32, 170, 0.8);
     box-shadow: 
-        inset 0 3px 6px rgba(255, 255, 255, 0.5),
-        inset 0 -3px 6px rgba(0, 0, 0, 0.2),
-        0 0 20px rgba(124, 58, 237, 0.4);
+        inset 0 3px 6px rgba(255, 255, 255, 0.3),
+        inset 0 -3px 6px rgba(0, 0, 0, 0.15),
+        0 0 20px rgba(102, 32, 170, 0.5);
+    transition: all 0.5s ease;
+}
+
+.diamond.filled {
+    background: linear-gradient(135deg, #6620aa 0%, #7d2cb8 15%, #8b35c7 30%, #5d1a96 45%, #4a1575 60%, #3d1260 75%, #2f0e4a 90%, #220a35 100%);
+    border: none;
+    box-shadow: 
+        inset 0 4px 12px rgba(255, 255, 255, 0.8),
+        inset 0 -4px 12px rgba(0, 0, 0, 0.4),
+        0 0 30px rgba(102, 32, 170, 0.8),
+        0 0 50px rgba(102, 32, 170, 0.4),
+        0 0 80px rgba(102, 32, 170, 0.2);
 }
 
 /* Hexagon */
 .hexagon {
     width: 65px;
     height: 56.25px;
-    background: linear-gradient(135deg, #059669 0%, #10b981 25%, #34d399 50%, #6ee7b7 75%, #a7f3d0 100%);
+    background: transparent;
+    border: 3px solid rgba(25, 100, 25, 0.8);
     position: relative;
     border-radius: 8px;
     box-shadow: 
-        inset 0 3px 6px rgba(255, 255, 255, 0.5),
-        inset 0 -3px 6px rgba(0, 0, 0, 0.2),
-        0 0 20px rgba(5, 150, 105, 0.4);
+        inset 0 3px 6px rgba(255, 255, 255, 0.3),
+        inset 0 -3px 6px rgba(0, 0, 0, 0.15),
+        0 0 20px rgba(25, 100, 25, 0.5);
+    transition: all 0.5s ease;
+}
+
+.hexagon.filled {
+    background: linear-gradient(135deg, #196419 0%, #228b22 15%, #2ba52b 30%, #1e7a1e 45%, #166816 60%, #0f550f 75%, #0a420a 90%, #052f05 100%);
+    border: none;
+    box-shadow: 
+        inset 0 4px 12px rgba(255, 255, 255, 0.8),
+        inset 0 -4px 12px rgba(0, 0, 0, 0.4),
+        0 0 30px rgba(25, 100, 25, 0.8),
+        0 0 50px rgba(25, 100, 25, 0.4),
+        0 0 80px rgba(25, 100, 25, 0.2);
 }
 
 .hexagon::before,
@@ -228,16 +303,25 @@ body {
     width: 0;
     border-left: 32.5px solid transparent;
     border-right: 32.5px solid transparent;
+    transition: all 0.5s ease;
 }
 
 .hexagon::before {
     bottom: 100%;
-    border-bottom: 16.25px solid #059669;
+    border-bottom: 16.25px solid rgba(25, 100, 25, 0.8);
 }
 
 .hexagon::after {
     top: 100%;
-    border-top: 16.25px solid #059669;
+    border-top: 16.25px solid rgba(25, 100, 25, 0.8);
+}
+
+.hexagon.filled::before {
+    border-bottom-color: #196419;
+}
+
+.hexagon.filled::after {
+    border-top-color: #196419;
 }
 
 /* Star */
@@ -246,7 +330,12 @@ body {
     width: 65px;
     height: 65px;
     background: none;
-    filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.3)) drop-shadow(0 0 20px rgba(245, 158, 11, 0.4));
+    filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.4)) drop-shadow(0 0 20px rgba(204, 153, 0, 0.5));
+    transition: all 0.5s ease;
+}
+
+.star.filled {
+    filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.4)) drop-shadow(0 0 30px rgba(204, 153, 0, 0.8)) drop-shadow(0 0 50px rgba(204, 153, 0, 0.4));
 }
 
 .star::before {
@@ -259,7 +348,12 @@ body {
     height: 0;
     border-left: 32.5px solid transparent;
     border-right: 32.5px solid transparent;
-    border-bottom: 24.375px solid #d97706;
+    border-bottom: 24.375px solid rgba(204, 153, 0, 0.8);
+    transition: all 0.5s ease;
+}
+
+.star.filled::before {
+    border-bottom-color: #cc9900;
 }
 
 .star::after {
@@ -272,7 +366,12 @@ body {
     height: 0;
     border-left: 32.5px solid transparent;
     border-right: 32.5px solid transparent;
-    border-bottom: 24.375px solid #d97706;
+    border-bottom: 24.375px solid rgba(204, 153, 0, 0.8);
+    transition: all 0.5s ease;
+}
+
+.star.filled::after {
+    border-bottom-color: #cc9900;
 }
 
 .star .shape-inner::before {
@@ -285,7 +384,12 @@ body {
     height: 0;
     border-left: 32.5px solid transparent;
     border-right: 32.5px solid transparent;
-    border-bottom: 24.375px solid #f59e0b;
+    border-bottom: 24.375px solid rgba(204, 153, 0, 0.8);
+    transition: all 0.5s ease;
+}
+
+.star.filled .shape-inner::before {
+    border-bottom-color: #b38600;
 }
 
 .star .shape-inner::after {
@@ -298,7 +402,12 @@ body {
     height: 0;
     border-left: 32.5px solid transparent;
     border-right: 32.5px solid transparent;
-    border-bottom: 24.375px solid #f59e0b;
+    border-bottom: 24.375px solid rgba(204, 153, 0, 0.8);
+    transition: all 0.5s ease;
+}
+
+.star.filled .shape-inner::after {
+    border-bottom-color: #b38600;
 }
 
 /* Swaying Animations */
@@ -325,100 +434,100 @@ body {
 }
 
 /* Shape Glow Animation - Enhanced */
-.circle { animation: glowPink 4s ease-in-out infinite alternate; }
-.square { animation: glowCyan 4.5s ease-in-out infinite alternate; }
-.triangle { animation: glowOrange 3.8s ease-in-out infinite alternate; }
-.diamond { animation: glowPurple 5.2s ease-in-out infinite alternate; }
-.hexagon { animation: glowGreen 4.8s ease-in-out infinite alternate; }
-.star { animation: glowYellow 3.5s ease-in-out infinite alternate; }
+.circle.filled { animation: glowPink 4s ease-in-out infinite alternate; }
+.square.filled { animation: glowCyan 4.5s ease-in-out infinite alternate; }
+.triangle.filled { animation: glowOrange 3.8s ease-in-out infinite alternate; }
+.diamond.filled { animation: glowPurple 5.2s ease-in-out infinite alternate; }
+.hexagon.filled { animation: glowGreen 4.8s ease-in-out infinite alternate; }
+.star.filled { animation: glowYellow 3.5s ease-in-out infinite alternate; }
 
 @keyframes glowPink {
     0% {
-        filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.3)) 
-                drop-shadow(0 0 15px rgba(255, 23, 68, 0.4))
+        filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.4)) 
+                drop-shadow(0 0 25px rgba(255, 0, 128, 0.6))
                 brightness(1);
         transform: scale(1);
     }
     100% {
-        filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.4)) 
-                drop-shadow(0 0 30px rgba(255, 23, 68, 0.7))
-                brightness(1.2);
-        transform: scale(1.05);
+        filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.5)) 
+                drop-shadow(0 0 40px rgba(255, 0, 128, 0.9))
+                brightness(1.4);
+        transform: scale(1.1);
     }
 }
 
 @keyframes glowCyan {
     0% {
-        filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.3)) 
-                drop-shadow(0 0 15px rgba(0, 188, 212, 0.4))
+        filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.4)) 
+                drop-shadow(0 0 25px rgba(0, 150, 255, 0.6))
                 brightness(1);
         transform: scale(1);
     }
     100% {
-        filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.4)) 
-                drop-shadow(0 0 30px rgba(0, 188, 212, 0.7))
-                brightness(1.2);
-        transform: scale(1.05);
+        filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.5)) 
+                drop-shadow(0 0 40px rgba(0, 150, 255, 0.9))
+                brightness(1.4);
+        transform: scale(1.1);
     }
 }
 
 @keyframes glowOrange {
     0% {
-        filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.3)) 
-                drop-shadow(0 0 15px rgba(255, 111, 0, 0.4))
+        filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.4)) 
+                drop-shadow(0 0 25px rgba(204, 85, 0, 0.6))
                 brightness(1);
         transform: scale(1);
     }
     100% {
-        filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.4)) 
-                drop-shadow(0 0 30px rgba(255, 111, 0, 0.7))
-                brightness(1.2);
-        transform: scale(1.05);
+        filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.5)) 
+                drop-shadow(0 0 40px rgba(204, 85, 0, 0.9))
+                brightness(1.4);
+        transform: scale(1.1);
     }
 }
 
 @keyframes glowPurple {
     0% {
-        filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.3)) 
-                drop-shadow(0 0 15px rgba(124, 58, 237, 0.4))
+        filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.4)) 
+                drop-shadow(0 0 25px rgba(102, 32, 170, 0.6))
                 brightness(1);
         transform: scale(1) rotate(45deg);
     }
     100% {
-        filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.4)) 
-                drop-shadow(0 0 30px rgba(124, 58, 237, 0.7))
-                brightness(1.2);
-        transform: scale(1.05) rotate(45deg);
+        filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.5)) 
+                drop-shadow(0 0 40px rgba(102, 32, 170, 0.9))
+                brightness(1.4);
+        transform: scale(1.1) rotate(45deg);
     }
 }
 
 @keyframes glowGreen {
     0% {
-        filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.3)) 
-                drop-shadow(0 0 15px rgba(5, 150, 105, 0.4))
+        filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.4)) 
+                drop-shadow(0 0 25px rgba(25, 100, 25, 0.6))
                 brightness(1);
         transform: scale(1);
     }
     100% {
-        filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.4)) 
-                drop-shadow(0 0 30px rgba(5, 150, 105, 0.7))
-                brightness(1.2);
-        transform: scale(1.05);
+        filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.5)) 
+                drop-shadow(0 0 40px rgba(25, 100, 25, 0.9))
+                brightness(1.4);
+        transform: scale(1.1);
     }
 }
 
 @keyframes glowYellow {
     0% {
-        filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.3)) 
-                drop-shadow(0 0 15px rgba(245, 158, 11, 0.4))
+        filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.4)) 
+                drop-shadow(0 0 25px rgba(204, 153, 0, 0.6))
                 brightness(1);
         transform: scale(1);
     }
     100% {
-        filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.4)) 
-                drop-shadow(0 0 30px rgba(245, 158, 11, 0.7))
-                brightness(1.2);
-        transform: scale(1.05);
+        filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.5)) 
+                drop-shadow(0 0 40px rgba(204, 153, 0, 0.9))
+                brightness(1.4);
+        transform: scale(1.1);
     }
 }
 
@@ -448,20 +557,66 @@ body {
 
 /* Image Display */
 .image-display {
-    z-index: 20;
+    /* z-index: 20; */
     border-radius: 10px;
     overflow: hidden;
-    width: 100%;
-    height: 100%;
+    width: 80%;
+    height: 80%;
     display: flex;
     justify-content: center;
     align-items: center;
+    flex: 1;
 }
 
 .image-display img {
-    width: 100%;
+    width: 80%;
     height: 100%;
-    object-fit: contain;
+    /* object-fit: cover; */
+    border-radius: 10px;
+}
+
+.image-placeholder {
+    width: 100%;
+    flex: 1;
+    border: 2px dashed #ccc;
+    border-radius: 10px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: #999;
+    margin: 0;
+    font-size: 1.2rem;
+    background: rgba(245, 241, 232, 0.3);
+    min-height: 200px;
+}
+
+.generated-image-placeholder {
+    width: 100%;
+    flex: 1;
+    border: 2px dashed #ccc;
+    border-radius: 10px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: #999;
+    margin: 0;
+    font-size: 1.2rem;
+    background: rgba(245, 241, 232, 0.3);
+    min-height: 200px;
+}
+
+.feedback-placeholder {
+    width: 100%;
+    height: 20vh;
+    border: 2px dashed #ccc;
+    border-radius: 10px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: #999;
+    margin: 0;
+    font-size: 1.2rem;
+    background: rgba(245, 241, 232, 0.3);
 }
 
 /* New Layout Styles */
@@ -473,13 +628,17 @@ body {
     display: flex;
     flex-direction: column;
     align-items: center;
-    margin-top: 20px;
-    width: 80%;
+    margin: 0;
+    width: 100%;
+    flex-shrink: 0;
+    padding: 20px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
 }
 
 .prompt-input {
     width: 100%;
-    height: 8vh;
+    height: 9vh;
     padding: 12px;
     border-radius: 25px;
     border: 1px solid #ccc;
@@ -495,7 +654,7 @@ body {
 }
 
 .generate-button {
-    padding: 12px 20px;
+    padding: 15px 20px;
     border-radius: 25px;
     border: none;
     background: linear-gradient(45deg, #ff6b6b, #f06595);
@@ -513,62 +672,162 @@ body {
     box-shadow: 0 6px 12px rgba(0,0,0,0.3);
 }
 
+.app-body {
+  display: flex;
+  height: calc(100vh - 250px);
+  padding: 0;
+  gap: 0;
+}
+
+.progress-tracker-wrapper {
+  width: 12%;
+  min-width: 100px;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 20px 10px;
+  background: rgba(245, 241, 232, 0.5);
+  border-right: 2px solid rgba(0, 0, 0, 0.1);
+}
+
 .main-content {
-    display: flex;
+  width: 88%;
+  display: flex;
+  gap: 20px;
+  padding: 20px;
+  overflow-y: auto;
 }
 
 .left-panel, .right-panel {
-    width: 45%;
-    min-height: 350px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
+  flex: 1;
+  min-height: 500px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  padding: 0;
+  gap: 20px;
 }
 
 .left-panel {
-    /* border: 2px dashed #ccc; */
-    border-radius: 10px;
-    /* padding: 20px; */
-}
-
-.image-placeholder {
-    width: 400px;
-    height: 300px;
-    border: 2px dashed #ccc;
-    border-radius: 10px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    color: #999;
-    margin: 20px auto;
-    font-size: 1.2rem;
-}
-
-.generated-image-placeholder, .feedback-placeholder {
-    width: 400px;
-    height: 300px;
-    border: 2px dashed #ccc;
-    border-radius: 10px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    color: #999;
-    margin: 20px auto;
-    font-size: 1.2rem;
-}
-
-.feedback-placeholder {
-    height: 100px;
-}
-
-.app-body {
-  display: flex;
-  justify-content: space-between;
-  padding: 0 20px;
+  border-radius: 10px;
 }
 
 .locked {
   opacity: 0.5;
   cursor: not-allowed;
   pointer-events: none;
+}
+
+/* Responsive Design for Progress Tracker */
+@media (max-width: 768px) {
+    .app-body {
+        flex-direction: column;
+        height: auto;
+    }
+    
+    .progress-tracker-wrapper {
+        width: 100%;
+        height: 80px;
+        padding: 10px;
+    }
+    
+    .progress-list {
+        flex-direction: row;
+        height: auto;
+        width: 100%;
+        gap: 15px;
+        justify-content: center;
+        padding-top: 0;
+        padding-left: 10px;
+    }
+    
+    .progress-list::before {
+        left: 10px;
+        right: 10px;
+        top: 50%;
+        bottom: auto;
+        width: calc(100% - 20px);
+        height: 3px;
+        transform: translateY(-50%);
+        background: linear-gradient(to right, 
+            #4ade80 0%, 
+            #4ade80 var(--progress-percentage, 0%), 
+            #e0e0e0 var(--progress-percentage, 0%), 
+            #ccc 100%);
+    }
+    
+    .progress-item {
+        width: 40px;
+        height: 40px;
+    }
+    
+    .progress-shape {
+        width: 30px;
+        height: 30px;
+    }
+    
+    .progress-shape.triangle {
+        border-left: 12px solid transparent;
+        border-right: 12px solid transparent;
+        border-bottom: 20px solid rgba(255, 111, 0, 0.4);
+    }
+    
+    .progress-shape.hexagon {
+        width: 30px;
+        height: 26px;
+    }
+    
+    .progress-shape.star {
+        width: 30px;
+        height: 30px;
+    }
+    
+    .main-content {
+        width: 100%;
+        flex-direction: column;
+        gap: 15px;
+    }
+    
+    .left-panel, .right-panel {
+        width: 100%;
+    }
+    
+    .generated-image-placeholder, 
+    .image-placeholder, 
+    .feedback-placeholder {
+        width: 100%;
+        height: 350px;
+    }
+    
+    .feedback-placeholder {
+        height: 120px;
+    }
+}
+
+@media (max-width: 480px) {
+    .progress-item {
+        width: 35px;
+        height: 35px;
+    }
+    
+    .progress-shape {
+        width: 25px;
+        height: 25px;
+    }
+    
+    .progress-shape.triangle {
+        border-left: 10px solid transparent;
+        border-right: 10px solid transparent;
+        border-bottom: 17px solid rgba(255, 111, 0, 0.4);
+    }
+    
+    .progress-shape.hexagon {
+        width: 25px;
+        height: 22px;
+    }
+    
+    .progress-shape.star {
+        width: 25px;
+        height: 25px;
+    }
 }
