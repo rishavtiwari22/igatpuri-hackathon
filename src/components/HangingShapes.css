@@ -569,7 +569,12 @@ body {
     margin: 0;
     font-size: 1.2rem;
     background: rgba(245, 241, 232, 0.3);
+    overflow: hidden;
+    position: relative;
+    padding: 16px;
+    box-sizing: border-box;
     min-height: 200px;
+    max-height: 354px;
 }
 
 .generated-image-placeholder {
@@ -584,21 +589,31 @@ body {
     margin: 0;
     font-size: 1.2rem;
     background: rgba(245, 241, 232, 0.3);
+    overflow: hidden;
+    position: relative;
+    padding: 16px;
+    box-sizing: border-box;
     min-height: 200px;
+    max-height: 354px; 
 }
 
 .feedback-placeholder {
     width: 100%;
-    height: 20vh;
+    height: 24vh;
     border: 2px dashed #ccc;
     border-radius: 10px;
     display: flex;
-    justify-content: center;
-    align-items: center;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: stretch;
     color: #999;
     margin: 0;
     font-size: 1.2rem;
     background: rgba(245, 241, 232, 0.3);
+    overflow: hidden;
+    position: relative;
+    padding: 16px;
+    box-sizing: border-box;
 }
 
 /* New Layout Styles */
@@ -691,20 +706,24 @@ body {
 
 .main-content {
   width: 88%;
+  max-width: calc(100% - 120px); /* Ensure we don't exceed container */
   display: flex;
   gap: 20px;
   padding: 20px;
   overflow-y: auto;
+  box-sizing: border-box;
 }
 
 .left-panel, .right-panel {
   flex: 1;
   min-height: 500px;
+  max-width: 50%; /* Prevent panels from growing too wide */
   display: flex;
   flex-direction: column;
   align-items: stretch;
   padding: 0;
   gap: 20px;
+  box-sizing: border-box;
 }
 
 .left-panel {
@@ -829,6 +848,89 @@ body {
         width: 25px;
         height: 25px;
     }
+}
+
+/* Additional responsive styles for feedback container */
+@media (max-height: 600px) {
+  .feedback-placeholder {
+    height: 160px;
+    padding: 12px;
+  }
+  
+  .comparison-result {
+    padding: 10px !important;
+    gap: 8px !important;
+  }
+  
+  .comparison-main-score {
+    font-size: 1.6rem !important;
+  }
+  
+  .per-scale-compact {
+    grid-template-columns: repeat(auto-fit, minmax(40px, 1fr)) !important;
+    gap: 3px !important;
+  }
+  
+  .progress-bars-container {
+    gap: 6px;
+    margin-bottom: 10px;
+  }
+}
+
+@media (max-width: 480px) {
+  .feedback-placeholder {
+    height: 140px;
+    font-size: 1rem;
+    padding: 12px;
+  }
+  
+  .comparison-result {
+    padding: 8px !important;
+    gap: 6px !important;
+  }
+  
+  .progress-bars-container {
+    gap: 6px;
+    margin-bottom: 8px;
+  }
+  
+  .progress-bar-label {
+    min-width: 50px;
+    font-size: 0.7rem;
+  }
+  
+  .progress-percentage {
+    min-width: 30px;
+    font-size: 0.65rem;
+  }
+  
+  .comparison-main-score {
+    font-size: 1.4rem !important;
+  }
+  
+  .per-scale-compact {
+    grid-template-columns: repeat(auto-fit, minmax(35px, 1fr));
+    gap: 3px;
+  }
+  
+  .scale-item-compact {
+    padding: 3px 2px;
+    font-size: 0.55rem;
+  }
+  
+  .feedback-ready-icon {
+    font-size: 2rem;
+    margin-bottom: 6px;
+  }
+  
+  .feedback-ready-title {
+    font-size: 0.9rem;
+    margin-bottom: 3px;
+  }
+  
+  .feedback-ready-subtitle {
+    font-size: 0.7rem;
+  }
 }
 
 /* Loader Styles */
@@ -992,4 +1094,370 @@ body {
     left: 10%;
     animation-delay: 1.5s;
     background: linear-gradient(45deg, #cc9900, #ffd700);
+}
+
+/* Sound wave animation for success feedback */
+.sound-wave {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 1000;
+  pointer-events: none;
+}
+
+.sound-wave::before,
+.sound-wave::after {
+  content: '';
+  position: absolute;
+  border: 3px solid #ff6b6b;
+  border-radius: 50%;
+  animation: soundWave 1.5s ease-out;
+}
+
+.sound-wave::before {
+  width: 60px;
+  height: 60px;
+  top: -30px;
+  left: -30px;
+}
+
+.sound-wave::after {
+  width: 100px;
+  height: 100px;
+  top: -50px;
+  left: -50px;
+  animation-delay: 0.3s;
+}
+
+@keyframes soundWave {
+  0% {
+    transform: scale(0);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(2);
+    opacity: 0;
+  }
+}
+
+/* Comparison Result Styles */
+.comparison-result {
+  font-family: 'Poppins', sans-serif;
+  max-height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  box-sizing: border-box;
+  position: relative;
+}
+
+.comparison-result::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+  border-radius: 10px;
+  opacity: 0;
+  animation: shimmer 3s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes shimmer {
+  0%, 100% { opacity: 0; transform: translateX(-100%); }
+  50% { opacity: 1; transform: translateX(100%); }
+}
+
+.comparison-loading {
+  font-family: 'Poppins', sans-serif;
+  max-height: 100%;
+  overflow: hidden;
+  position: relative;
+}
+
+.comparison-loading::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, 
+    transparent, 
+    rgba(255, 255, 255, 0.1), 
+    transparent
+  );
+  animation: scanline 2s linear infinite;
+}
+
+@keyframes scanline {
+  0% { left: -100%; }
+  100% { left: 100%; }
+}
+
+/* Pulse animation for waiting state */
+.feedback-waiting {
+  animation: breathe 2s ease-in-out infinite;
+}
+
+@keyframes breathe {
+  0%, 100% { transform: scale(1); opacity: 0.8; }
+  50% { transform: scale(1.02); opacity: 1; }
+}
+
+/* Floating particles effect */
+.feedback-particles {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.feedback-particle {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.6);
+  border-radius: 50%;
+  animation: float-particle 4s linear infinite;
+}
+
+.feedback-particle:nth-child(1) { left: 20%; animation-delay: 0s; }
+.feedback-particle:nth-child(2) { left: 40%; animation-delay: 1s; }
+.feedback-particle:nth-child(3) { left: 60%; animation-delay: 2s; }
+.feedback-particle:nth-child(4) { left: 80%; animation-delay: 3s; }
+
+@keyframes float-particle {
+  0% {
+    transform: translateY(100vh) rotate(0deg);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  90% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-10vh) rotate(360deg);
+    opacity: 0;
+  }
+}
+
+/* Glow effect for quality indicators */
+.quality-glow {
+  animation: qualityGlow 2s ease-in-out infinite alternate;
+}
+
+@keyframes qualityGlow {
+  from {
+    filter: drop-shadow(0 0 5px currentColor);
+  }
+  to {
+    filter: drop-shadow(0 0 15px currentColor);
+  }
+}
+
+/* Scale grid hover effects */
+.per-scale-grid {
+  animation: fadeInUp 0.5s ease-out;
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(70px, 1fr)) !important;
+  gap: 5px !important;
+  max-width: 100%;
+  position: relative;
+}
+
+.per-scale-grid::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(45deg, 
+    rgba(255, 255, 255, 0) 0%, 
+    rgba(255, 255, 255, 0.1) 50%, 
+    rgba(255, 255, 255, 0) 100%
+  );
+  border-radius: 8px;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+
+.per-scale-grid:hover::before {
+  opacity: 1;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Horizontal Progress Bars Container */
+.progress-bars-container {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+    margin-bottom: 12px;
+    flex-shrink: 0;
+}
+
+.progress-bar-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+}
+
+.progress-bar-label {
+    min-width: 60px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: #666;
+    text-align: right;
+    flex-shrink: 0;
+}
+
+.horizontal-progress-bar {
+    flex: 1;
+    height: 6px;
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 3px;
+    overflow: hidden;
+    position: relative;
+}
+
+.horizontal-progress-fill {
+    height: 100%;
+    border-radius: 3px;
+    position: relative;
+    transition: width 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.target-progress {
+    background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+}
+
+.match-progress {
+    background: linear-gradient(90deg, #f093fb 0%, #f5576c 100%);
+}
+
+.progress-percentage {
+    min-width: 35px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: #444;
+    text-align: left;
+    flex-shrink: 0;
+}
+
+/* Compact comparison result layout */
+.comparison-result-compact {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    flex: 1;
+    overflow: hidden;
+}
+
+.comparison-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+}
+
+.comparison-main-score {
+    font-size: 1.8rem;
+    font-weight: bold;
+    margin: 0;
+    line-height: 1;
+}
+
+.comparison-quality-badge {
+    padding: 3px 8px;
+    border-radius: 10px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: white;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    flex-shrink: 0;
+}
+
+/* Compact per-scale scores */
+.per-scale-compact {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(45px, 1fr));
+    gap: 4px;
+    margin-top: 6px;
+}
+
+.scale-item-compact {
+    background: rgba(255, 255, 255, 0.8);
+    border-radius: 4px;
+    padding: 4px 2px;
+    text-align: center;
+    font-size: 0.6rem;
+}
+
+.scale-label {
+    font-weight: 500;
+    color: #666;
+    margin-bottom: 2px;
+    line-height: 1;
+}
+
+.scale-dots {
+    display: flex;
+    justify-content: center;
+    gap: 1px;
+}
+
+.scale-dot {
+    width: 3px;
+    height: 3px;
+    border-radius: 50%;
+    transition: background-color 0.3s ease;
+}
+
+/* Enhanced feedback ready state */
+.feedback-ready {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+    text-align: center;
+}
+
+.feedback-ready-icon {
+    font-size: 2.5rem;
+    margin-bottom: 8px;
+}
+
+.feedback-ready-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #666;
+    margin-bottom: 4px;
+    line-height: 1.2;
+}
+
+.feedback-ready-subtitle {
+    font-size: 0.8rem;
+    color: #999;
+    line-height: 1.2;
 }
