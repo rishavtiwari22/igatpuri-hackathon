@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import ProgressTracker from "./ProgressTracker";
-import { computeMSSSIM, getQualityDescription, formatPerScaleScores } from "../utils/imageComparison";
+import { computeMSSSIM, getQualityDescription, formatDetailedScores } from "../utils/imageComparison";
 import "./HangingShapes.css";
 import image1 from "../assets/car.jpg";
 import image2 from "../assets/horse.jpg";
@@ -103,7 +103,7 @@ const FeedbackComponent = React.memo(({ selectedImage, comparisonResult, isCompa
 
   if (comparisonResult && !comparisonResult.error) {
     const quality = getQualityDescription(comparisonResult.percentage);
-    const perScaleScores = formatPerScaleScores(comparisonResult.per_scale_scores || []);
+    const detailedScores = comparisonResult.detailed_scores ? formatDetailedScores(comparisonResult.detailed_scores) : {};
     
     return (
       <motion.div 
@@ -182,44 +182,48 @@ const FeedbackComponent = React.memo(({ selectedImage, comparisonResult, isCompa
           </motion.div>
         </motion.div>
 
-        {/* Compact per-scale scores */}
-        {perScaleScores.length > 0 && (
+        {/* Enhanced detailed scores display */}
+        {Object.keys(detailedScores).length > 0 && (
           <motion.div
-            className="per-scale-compact"
+            className="detailed-scores-grid"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.7 }}
           >
-            {perScaleScores.map((scale, index) => (
+            {Object.entries(detailedScores).slice(0, 5).map(([label, score], index) => (
               <motion.div 
-                key={index} 
-                className="scale-item-compact"
+                key={label} 
+                className="score-item-compact"
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.8 + index * 0.1 }}
               >
-                <div className="scale-label">S{index + 1}</div>
-                <div className="scale-dots">
-                  {[1, 2, 3].map((dot, dotIndex) => (
-                    <motion.div
-                      key={dotIndex}
-                      className="scale-dot"
-                      style={{
-                        backgroundColor: dotIndex < Math.ceil(scale.score / 33.33) 
-                          ? quality.color 
-                          : 'rgba(0,0,0,0.2)'
-                      }}
-                      initial={{ scale: 0 }}
-                      animate={{ scale: 1 }}
-                      transition={{ 
-                        delay: 0.9 + index * 0.1 + dotIndex * 0.05,
-                        type: "spring"
-                      }}
-                    />
-                  ))}
+                <div className="score-label">{label}</div>
+                <div className="score-value" style={{ 
+                  color: parseInt(score) >= 70 ? '#16a34a' : 
+                         parseInt(score) >= 50 ? '#ca8a04' : '#dc2626' 
+                }}>
+                  {score}
                 </div>
               </motion.div>
             ))}
+          </motion.div>
+        )}
+        
+        {/* Analysis insights */}
+        {comparisonResult.analysis && (
+          <motion.div
+            className="analysis-insights"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 1.0 }}
+          >
+            <div className="insight-row">
+              <span>Structure: {comparisonResult.analysis.structure_quality} | Color: {comparisonResult.analysis.color_alignment} | Shape: {comparisonResult.analysis.shape_alignment}</span>
+              {comparisonResult.analysis.enhancement_applied && (
+                <span className="enhancement-badge">Enhanced ✨</span>
+              )}
+            </div>
           </motion.div>
         )}
       </motion.div>
@@ -366,14 +370,34 @@ export default function HangingShapes() {
   const [showSoundWave, setShowSoundWave] = useState(false);
   const [comparisonResult, setComparisonResult] = useState(null);
   const [isComparing, setIsComparing] = useState(false);
+  const [selectedModel, setSelectedModel] = useState("pollinations");
   const [unlockedShapes, setUnlockedShapes] = useState(() => {
+    // For testing - uncomment the next line to reset progress
+    // localStorage.removeItem("unlockedShapes");
     const savedProgress = localStorage.getItem("unlockedShapes");
     return savedProgress ? JSON.parse(savedProgress) : [0];
   });
+  const [showUnlockNotification, setShowUnlockNotification] = useState(false);
 
+
+  // Available models for image generation
+  const availableModels = [
+    { id: "pollinations", name: "Pollinations AI", description: "Fast and reliable" },
+    { id: "clipdrop", name: "ClipDrop", description: "High quality results" }
+  ];
+
+  // Save progress to localStorage whenever unlockedShapes changes
   useEffect(() => {
     localStorage.setItem("unlockedShapes", JSON.stringify(unlockedShapes));
+    console.log("Progress saved to localStorage:", unlockedShapes);
   }, [unlockedShapes]);
+
+  // Cleanup on component unmount
+  useEffect(() => {
+    return () => {
+      // Cleanup function if needed
+    };
+  }, []);
 
   const images = [image1, image2, image3, image4, image5];
 
@@ -429,10 +453,11 @@ export default function HangingShapes() {
       console.log("MS-SSIM Comparison Result:", result);
     } catch (error) {
       console.error("Error comparing images:", error);
-      setComparisonResult({ 
+      const errorResult = { 
         error: "Failed to compare images: " + error.message,
         percentage: 0 
-      });
+      };
+      setComparisonResult(errorResult);
     } finally {
       setIsComparing(false);
     }
@@ -445,6 +470,59 @@ export default function HangingShapes() {
       compareImages(selectedImage, AIGeneratedimg);
     }
   }, [selectedImage, AIGeneratedimg, isGenerating]);
+
+  // Check for progression after comparison
+  useEffect(() => {
+    if (comparisonResult && !comparisonResult.error && comparisonResult.percentage >= 70) {
+      // Find which challenge the user just completed based on the selected image
+      const currentChallengeIndex = shapes.findIndex(shape => shape.image === selectedImage);
+      
+      console.log("Progression check:", {
+        currentChallengeIndex,
+        unlockedShapes,
+        percentage: comparisonResult.percentage
+      });
+      
+      // Only proceed if we found a valid challenge index
+      if (currentChallengeIndex !== -1) {
+        const nextChallengeIndex = currentChallengeIndex + 1;
+        
+        // Only unlock next challenge if:
+        // 1. There is a next challenge (not at the end)
+        // 2. The next challenge is not already unlocked
+        // 3. The current challenge was already unlocked (user didn't somehow complete a locked challenge)
+        if (nextChallengeIndex < shapes.length && 
+            !unlockedShapes.includes(nextChallengeIndex) && 
+            unlockedShapes.includes(currentChallengeIndex)) {
+          
+          console.log(`Unlocking challenge ${nextChallengeIndex} after completing challenge ${currentChallengeIndex}`);
+          
+          setTimeout(() => {
+            setUnlockedShapes(prev => {
+              const newUnlocked = [...prev, nextChallengeIndex];
+              console.log("New unlocked shapes:", newUnlocked);
+              return newUnlocked;
+            });
+            setShowUnlockNotification(true);
+            
+            // Hide notification after 3 seconds
+            setTimeout(() => {
+              setShowUnlockNotification(false);
+            }, 3000);
+            
+            playSuccessSound();
+          }, 1000); // Delay to let user see the result first
+        } else {
+          console.log("No progression needed:", {
+            nextChallengeIndex,
+            shapesLength: shapes.length,
+            nextAlreadyUnlocked: unlockedShapes.includes(nextChallengeIndex),
+            currentIsUnlocked: unlockedShapes.includes(currentChallengeIndex)
+          });
+        }
+      }
+    }
+  }, [comparisonResult, unlockedShapes, shapes, selectedImage]);
 
   // Sound generation functions
   const createVictorySound = () => {
@@ -601,6 +679,212 @@ export default function HangingShapes() {
     }
   };
 
+  const createGenerationStartSound = () => {
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    
+    // More sophisticated chord progression with harmony
+    const chordProgression = [
+      // First chord: F major (warm, inviting)
+      { notes: [174.61, 220, 261.63], duration: 0.25, volume: 0.15 }, // F3, A3, C4
+      // Second chord: C major (bright, optimistic)
+      { notes: [261.63, 329.63, 392], duration: 0.25, volume: 0.18 }, // C4, E4, G4
+      // Third chord: Am (contemplative)
+      { notes: [220, 261.63, 329.63], duration: 0.25, volume: 0.16 }, // A3, C4, E4
+      // Final chord: G major (resolution, confidence)
+      { notes: [196, 246.94, 293.66, 369.99], duration: 0.4, volume: 0.2 } // G3, B3, D4, F#4
+    ];
+    
+    let time = audioContext.currentTime;
+    
+    chordProgression.forEach((chord, chordIndex) => {
+      chord.notes.forEach((freq, noteIndex) => {
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+        const filter = audioContext.createBiquadFilter();
+        const reverb = audioContext.createConvolver();
+        
+        // Create a simple reverb impulse response
+        const impulseLength = audioContext.sampleRate * 0.3;
+        const impulse = audioContext.createBuffer(1, impulseLength, audioContext.sampleRate);
+        const impulseData = impulse.getChannelData(0);
+        for (let i = 0; i < impulseLength; i++) {
+          impulseData[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / impulseLength, 2);
+        }
+        reverb.buffer = impulse;
+        
+        // Audio routing with reverb
+        oscillator.connect(filter);
+        filter.connect(gainNode);
+        gainNode.connect(reverb);
+        reverb.connect(audioContext.destination);
+        // Also connect dry signal
+        gainNode.connect(audioContext.destination);
+        
+        // Use a warmer oscillator type
+        oscillator.type = noteIndex === 0 ? 'triangle' : 'sine';
+        oscillator.frequency.setValueAtTime(freq, time);
+        
+        // Gentle low-pass filter for warmth
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(freq * 4, time);
+        filter.frequency.exponentialRampToValueAtTime(freq * 2, time + chord.duration);
+        filter.Q.setValueAtTime(0.8, time);
+        
+        // Smooth volume envelope
+        gainNode.gain.setValueAtTime(0, time);
+        gainNode.gain.linearRampToValueAtTime(chord.volume, time + 0.05);
+        gainNode.gain.linearRampToValueAtTime(chord.volume * 0.7, time + chord.duration * 0.7);
+        gainNode.gain.exponentialRampToValueAtTime(0.001, time + chord.duration);
+        
+        oscillator.start(time);
+        oscillator.stop(time + chord.duration);
+      });
+      time += chord.duration * 0.8; // Slight overlap for smooth transitions
+    });
+
+    // Add magical sparkle effects
+    setTimeout(() => {
+      for (let i = 0; i < 5; i++) {
+        setTimeout(() => {
+          const sparkle = audioContext.createOscillator();
+          const sparkleGain = audioContext.createGain();
+          const sparkleFilter = audioContext.createBiquadFilter();
+          
+          sparkle.connect(sparkleFilter);
+          sparkleFilter.connect(sparkleGain);
+          sparkleGain.connect(audioContext.destination);
+          
+          // Higher frequencies for sparkle (pentatonic scale)
+          const sparkleFreqs = [523.25, 587.33, 659.25, 783.99, 880]; // C5, D5, E5, G5, A5
+          sparkle.frequency.setValueAtTime(
+            sparkleFreqs[Math.floor(Math.random() * sparkleFreqs.length)], 
+            audioContext.currentTime
+          );
+          sparkle.type = 'sine';
+          
+          // High-pass filter for brightness
+          sparkleFilter.type = 'highpass';
+          sparkleFilter.frequency.setValueAtTime(1000, audioContext.currentTime);
+          sparkleFilter.Q.setValueAtTime(2, audioContext.currentTime);
+          
+          sparkleGain.gain.setValueAtTime(0, audioContext.currentTime);
+          sparkleGain.gain.linearRampToValueAtTime(0.08, audioContext.currentTime + 0.02);
+          sparkleGain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.15);
+          
+          sparkle.start(audioContext.currentTime);
+          sparkle.stop(audioContext.currentTime + 0.15);
+        }, i * 150 + Math.random() * 100); // Slightly randomized timing
+      }
+    }, 600);
+
+    // Add a gentle "whoosh" effect for AI activation
+    setTimeout(() => {
+      const whoosh = audioContext.createOscillator();
+      const whooshGain = audioContext.createGain();
+      const whooshFilter = audioContext.createBiquadFilter();
+      
+      whoosh.connect(whooshFilter);
+      whooshFilter.connect(whooshGain);
+      whooshGain.connect(audioContext.destination);
+      
+      whoosh.type = 'sawtooth';
+      whoosh.frequency.setValueAtTime(60, audioContext.currentTime);
+      whoosh.frequency.exponentialRampToValueAtTime(200, audioContext.currentTime + 0.3);
+      
+      whooshFilter.type = 'bandpass';
+      whooshFilter.frequency.setValueAtTime(100, audioContext.currentTime);
+      whooshFilter.frequency.exponentialRampToValueAtTime(800, audioContext.currentTime + 0.3);
+      whooshFilter.Q.setValueAtTime(8, audioContext.currentTime);
+      
+      whooshGain.gain.setValueAtTime(0, audioContext.currentTime);
+      whooshGain.gain.linearRampToValueAtTime(0.05, audioContext.currentTime + 0.1);
+      whooshGain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.3);
+      
+      whoosh.start(audioContext.currentTime);
+      whoosh.stop(audioContext.currentTime + 0.3);
+    }, 1000);
+  };
+
+  const playGenerationStartSound = () => {
+    try {
+      createGenerationStartSound();
+    } catch (error) {
+      console.log('Audio not supported or blocked by browser:', error);
+    }
+  };
+
+  // Image generation functions for different models
+  const generateWithPollinations = async (prompt) => {
+    const width = 1024;
+    const height = 1024;
+    const seed = 42;
+    const model = "flux";
+    
+    const encodedPrompt = encodeURIComponent(prompt);
+    const params = new URLSearchParams({
+      width: width,
+      height: height,
+      seed: seed,
+      model: model,
+      nologo: 'true'
+    });
+    
+    const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?${params.toString()}`;
+    
+    // Create image with proper loading
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    
+    const imageLoadPromise = new Promise((resolve, reject) => {
+      img.onload = () => {
+        console.log("Pollinations image loaded successfully");
+        resolve();
+      };
+      
+      img.onerror = (error) => {
+        console.warn("Failed to load Pollinations image:", error);
+        resolve(); // Still resolve to continue the flow
+      };
+      
+      img.src = imageUrl;
+    });
+    
+    await imageLoadPromise;
+    return imageUrl;
+  };
+
+  const generateWithClipDrop = async (prompt) => {
+    // Note: You'll need to add your ClipDrop API key here
+    const API_KEY = '29da0145f174361bd87d07659016867767d8cb1b8a7cbf2376ddab617f3b7dca4effe88696214e2f5dd8efe7357a1e84'; // Replace with your actual API key
+    
+    const form = new FormData();
+    form.append('prompt', prompt);
+    
+    try {
+      const response = await fetch('https://clipdrop-api.co/text-to-image/v1', {
+        method: 'POST',
+        headers: {
+          'x-api-key': API_KEY,
+        },
+        body: form,
+      });
+      
+      if (!response.ok) {
+        throw new Error(`ClipDrop API error: ${response.status}`);
+      }
+      
+      const buffer = await response.arrayBuffer();
+      const blob = new Blob([buffer], { type: 'image/png' });
+      const imageUrl = URL.createObjectURL(blob);
+      
+      console.log("ClipDrop image generated successfully");
+      return imageUrl;
+    } catch (error) {
+      console.error("Error generating with ClipDrop:", error);
+      throw error;
+    }
+  };
+
   // Loader Component
   const LoaderComponent = () => (
     <motion.div 
@@ -643,45 +927,19 @@ export default function HangingShapes() {
     setIsGenerating(true);
     setAIGeneratedimg(null); // Clear previous image
     
-    const width = 1024;
-    const height = 1024;
-    const seed = 42;
-    const model = "flux";
-    
-    // Use the working Pollinations AI URL format
-    const encodedPrompt = encodeURIComponent(prompt);
-    const params = new URLSearchParams({
-        width: width,
-        height: height,
-        seed: seed,
-        model: model,
-        nologo: 'true'
-    });
-    
-    const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?${params.toString()}`;
-
-    console.log("Generate image with prompt:", imageUrl);
+    // Play generation start sound when generation begins
+    playGenerationStartSound();
     
     try {
-      // Create image with proper loading
-      const img = new Image();
-      img.crossOrigin = "anonymous";
+      let imageUrl;
       
-      const imageLoadPromise = new Promise((resolve, reject) => {
-        img.onload = () => {
-          console.log("Image loaded successfully for generation");
-          resolve();
-        };
-        
-        img.onerror = (error) => {
-          console.warn("Failed to load image:", error);
-          resolve(); // Still resolve to continue the flow
-        };
-        
-        img.src = imageUrl;
-      });
-      
-      await imageLoadPromise;
+      if (selectedModel === "pollinations") {
+        imageUrl = await generateWithPollinations(prompt);
+      } else if (selectedModel === "clipdrop") {
+        imageUrl = await generateWithClipDrop(prompt);
+      }
+
+      console.log("Generated image with", selectedModel, ":", imageUrl);
       
       handleGenImg(imageUrl);
 
@@ -692,19 +950,12 @@ export default function HangingShapes() {
           compareImages(selectedImage, imageUrl);
         }
       }, 500);
-
-      // Unlock the next shape and play success sound
-      if (unlockedShapes.length < shapes.length) {
-        setUnlockedShapes([...unlockedShapes, unlockedShapes.length]);
-        // Play success sound after a short delay to let the UI update
-        setTimeout(() => {
-          playSuccessSound();
-        }, 300);
-      }
     } catch (error) {
       console.error("Error generating image:", error);
-      // Still set the image URL even if there was an error, as it might work for display
-      handleGenImg(imageUrl);
+      setComparisonResult({ 
+        error: `Failed to generate image with ${selectedModel}: ${error.message}`,
+        percentage: 0 
+      });
     } finally {
       setIsGenerating(false);
     }
@@ -780,9 +1031,57 @@ export default function HangingShapes() {
         )}
       </AnimatePresence>
 
+      {/* Unlock Notification */}
+      <AnimatePresence>
+        {showUnlockNotification && (
+          <motion.div
+            style={{
+              position: 'fixed',
+              top: '20px',
+              right: '20px',
+              background: 'linear-gradient(135deg, #4ade80, #10b981)',
+              color: 'white',
+              padding: '12px 20px',
+              borderRadius: '12px',
+              fontSize: '1rem',
+              fontWeight: '600',
+              fontFamily: 'Poppins, sans-serif',
+              boxShadow: '0 8px 25px rgba(16, 185, 129, 0.4)',
+              zIndex: 1000,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}
+            initial={{ x: 100, opacity: 0, scale: 0.8 }}
+            animate={{ x: 0, opacity: 1, scale: 1 }}
+            exit={{ x: 100, opacity: 0, scale: 0.8 }}
+            transition={{ 
+              type: "spring",
+              stiffness: 200,
+              damping: 20
+            }}
+          >
+            <motion.span
+              animate={{ rotate: [0, 15, -15, 0] }}
+              transition={{ 
+                duration: 0.6,
+                repeat: 2
+              }}
+            >
+              🔓
+            </motion.span>
+            Next Challenge Unlocked!
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <div className="app-body">
         <div className="progress-tracker-wrapper">
-          <ProgressTracker unlockedShapes={unlockedShapes} shapes={shapes} />
+          <ProgressTracker 
+            unlockedShapes={unlockedShapes} 
+            shapes={shapes} 
+            comparisonResult={comparisonResult}
+          />
         </div>
         <div className="main-content">
           <div className="left-panel">
@@ -809,21 +1108,43 @@ export default function HangingShapes() {
                 className="prompt-input"
                 disabled={isGenerating}
               />
-              <motion.button 
-                onClick={handleGenerateClick} 
-                className="generate-button"
-                disabled={isGenerating || !prompt.trim()}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                animate={isGenerating ? { 
-                  backgroundColor: ["#ff6b6b", "#f06595", "#ff6b6b"],
-                } : {}}
-                transition={{ 
-                  backgroundColor: { repeat: Infinity, duration: 1.5 }
-                }}
-              >
-                {isGenerating ? "Generating..." : "Generate Image"}
-              </motion.button>
+              
+              {/* Model Selection and Generate Button Row */}
+              <div className="controls-row">
+                <div className="model-selection">
+                  <select 
+                    value={selectedModel} 
+                    onChange={(e) => {
+                      const newModel = e.target.value;
+                      setSelectedModel(newModel);
+                    }}
+                    className="model-dropdown"
+                    disabled={isGenerating}
+                  >
+                    {availableModels.map((model) => (
+                      <option key={model.id} value={model.id}>
+                        {model.name} - {model.description}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                
+                <motion.button 
+                  onClick={handleGenerateClick} 
+                  className="generate-button"
+                  disabled={isGenerating || !prompt.trim()}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  animate={isGenerating ? { 
+                    backgroundColor: ["#ff6b6b", "#f06595", "#ff6b6b"],
+                  } : {}}
+                  transition={{ 
+                    backgroundColor: { repeat: Infinity, duration: 1.5 }
+                  }}
+                >
+                  {isGenerating ? `Generating with ${availableModels.find(m => m.id === selectedModel)?.name}...` : "Generate Image"}
+                </motion.button>
+              </div>
             </div>
           </div>
           <div className="right-panel">
