@@ -48,7 +48,7 @@ const toImageData = (img, w, h) => {
 
 // Load image with enhanced error handling (no CORS proxy needed for image.pollinations.ai)
 const loadImage = (src) => {
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
     console.log(`Attempting to load image: ${src}`);
     
     const img = new Image();
@@ -122,7 +122,6 @@ const fallbackSSIM = (imageDataA, imageDataB) => {
     
     if (dataA.length !== dataB.length) return 0;
     
-    let sumSquaredDiff = 0;
     let sumA = 0;
     let sumB = 0;
     let sumASq = 0;
@@ -162,38 +161,6 @@ const fallbackSSIM = (imageDataA, imageDataB) => {
     return Math.max(0, Math.min(1, numerator / denominator));
   } catch (error) {
     console.error('Fallback SSIM error:', error);
-    return 0;
-  }
-};
-
-// Enhanced pixel-based similarity for similar subject matter
-const computePixelSimilarity = (imageDataA, imageDataB) => {
-  try {
-    const dataA = imageDataA.data;
-    const dataB = imageDataB.data;
-    
-    if (dataA.length !== dataB.length) return 0;
-    
-    let totalDifference = 0;
-    let maxPossibleDifference = 0;
-    
-    // Compare each pixel (RGB values)
-    for (let i = 0; i < dataA.length; i += 4) {
-      const rDiff = Math.abs(dataA[i] - dataB[i]);
-      const gDiff = Math.abs(dataA[i + 1] - dataB[i + 1]);
-      const bDiff = Math.abs(dataA[i + 2] - dataB[i + 2]);
-      
-      // Average difference for this pixel
-      const pixelDiff = (rDiff + gDiff + bDiff) / 3;
-      totalDifference += pixelDiff;
-      maxPossibleDifference += 255; // Maximum possible difference per pixel
-    }
-    
-    // Convert to similarity (1 - normalized difference)
-    const similarity = 1 - (totalDifference / maxPossibleDifference);
-    return Math.max(0, Math.min(1, similarity));
-  } catch (error) {
-    console.error('Pixel similarity error:', error);
     return 0;
   }
 };
@@ -296,66 +263,6 @@ const computeEdgeSimilarity = (imageDataA, imageDataB) => {
     return Math.max(0, Math.min(1, similarity));
   } catch (error) {
     console.error('Edge similarity error:', error);
-    return 0;
-  }
-};
-
-// Semantic content analysis for similar subjects
-const computeSemanticSimilarity = (imageDataA, imageDataB) => {
-  try {
-    const dataA = imageDataA.data;
-    const dataB = imageDataB.data;
-    
-    // Analyze dominant colors and patterns
-    const analyzeImage = (data) => {
-      const colors = { red: 0, green: 0, blue: 0 };
-      const brightness = [];
-      let totalPixels = 0;
-      
-      for (let i = 0; i < data.length; i += 4) {
-        const r = data[i];
-        const g = data[i + 1];
-        const b = data[i + 2];
-        
-        colors.red += r;
-        colors.green += g;
-        colors.blue += b;
-        
-        const lum = 0.299 * r + 0.587 * g + 0.114 * b;
-        brightness.push(lum);
-        totalPixels++;
-      }
-      
-      // Normalize color averages
-      colors.red /= totalPixels;
-      colors.green /= totalPixels;
-      colors.blue /= totalPixels;
-      
-      // Calculate brightness statistics
-      brightness.sort((a, b) => a - b);
-      const brightnessMedian = brightness[Math.floor(brightness.length / 2)];
-      const brightnessAvg = brightness.reduce((a, b) => a + b, 0) / brightness.length;
-      
-      return { colors, brightnessMedian, brightnessAvg };
-    };
-    
-    const analysisA = analyzeImage(dataA);
-    const analysisB = analyzeImage(dataB);
-    
-    // Compare color profiles
-    const colorSimilarity = 1 - (
-      Math.abs(analysisA.colors.red - analysisB.colors.red) +
-      Math.abs(analysisA.colors.green - analysisB.colors.green) +
-      Math.abs(analysisA.colors.blue - analysisB.colors.blue)
-    ) / (255 * 3);
-    
-    // Compare brightness profiles
-    const brightnessSimilarity = 1 - Math.abs(analysisA.brightnessAvg - analysisB.brightnessAvg) / 255;
-    
-    // Weighted combination
-    return (colorSimilarity * 0.6 + brightnessSimilarity * 0.4);
-  } catch (error) {
-    console.error('Semantic similarity error:', error);
     return 0;
   }
 };
@@ -579,16 +486,21 @@ export const computeMSSSIM = async (srcA, srcB, numScales = 5) => {
     
     const percentage = Math.round(finalScore * 10000) / 100;
     
+    const detailed_scores = {
+      structure: Math.round(structureScore * 100),
+      color: Math.round(colorScore * 100),
+      shape: Math.round(shapeScore * 100),
+      combined: Math.round(combinedScore * 100),
+      final: Math.round(finalScore * 100)
+    };
+
+    const feedback = generateFeedback(detailed_scores);
+
     const result = {
       ms_ssim: finalScore,
       percentage: percentage,
-      detailed_scores: {
-        structure: Math.round(structureScore * 100),
-        color: Math.round(colorScore * 100),
-        shape: Math.round(shapeScore * 100),
-        combined: Math.round(combinedScore * 100),
-        final: Math.round(finalScore * 100)
-      },
+      detailed_scores: detailed_scores,
+      feedback: feedback,
       per_scale_scores: msssimResult.per_scale_scores,
       weights_used: weights,
       analysis: {
@@ -615,6 +527,38 @@ export const computeMSSSIM = async (srcA, srcB, numScales = 5) => {
       algorithm: 'Enhanced MS-SSIM (Failed)'
     };
   }
+};
+
+// Generate feedback based on detailed scores
+export const generateFeedback = (detailedScores) => {
+  const feedback = [];
+  const { structure, color, shape } = detailedScores;
+
+  if (structure < 40) {
+    feedback.push("The overall structure is quite different. Try to match the composition and layout of the target image.");
+  } else if (structure < 70) {
+    feedback.push("The structure is getting there, but some elements are misplaced. Pay attention to the arrangement of objects.");
+  }
+
+  if (color < 40) {
+    feedback.push("The colors are very different. Try using a similar color palette to the target image.");
+  } else if (color < 60) {
+    feedback.push("The color mood is a bit off. Adjust the saturation and brightness to better match the target.");
+  }
+
+  if (shape < 30) {
+    feedback.push("The shapes of the objects are not very similar. Focus on getting the outlines and contours right.");
+  } else if (shape < 50) {
+    feedback.push("The shapes are recognizable, but could be more precise. Try to refine the details of the objects.");
+  }
+
+  if (structure >= 70 && color >= 60 && shape >= 50) {
+    feedback.push("Great job! The images are very similar in structure, color, and shape.");
+  } else if (feedback.length === 0) {
+    feedback.push("Good attempt! Try to refine the details for an even better match.");
+  }
+
+  return feedback;
 };
 
 // Enhanced quality description based on similarity percentage
