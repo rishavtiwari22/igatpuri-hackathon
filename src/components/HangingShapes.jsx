@@ -265,6 +265,77 @@ export default function HangingShapes() {
   // };
   
   // Image generation functions for different models
+  const generateWithPollinations = async (prompt) => {
+    const width = 1024;
+    const height = 1024;
+    const seed = 42;
+    const model = "flux";
+    
+    const encodedPrompt = encodeURIComponent(prompt);
+    const params = new URLSearchParams({
+      width: width,
+      height: height,
+      seed: seed,
+      model: model,
+      nologo: 'true'
+    });
+    
+    const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?${params.toString()}`;
+    
+    // Create image with proper loading
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    
+    const imageLoadPromise = new Promise((resolve, reject) => {
+      img.onload = () => {
+        console.log("Pollinations image loaded successfully");
+        resolve();
+      };
+      
+      img.onerror = (error) => {
+        console.warn("Failed to load Pollinations image:", error);
+        resolve(); // Still resolve to continue the flow
+      };
+      
+      img.src = imageUrl;
+    });
+    
+    await imageLoadPromise;
+    return imageUrl;
+  };
+
+  const generateWithClipDrop = async (prompt) => {
+    // Note: You'll need to add your ClipDrop API key here
+    // const API_KEY = '29da0145f174361bd87d07659016867767d8cb1b8a7cbf2376ddab617f3b7dca4effe88696214e2f5dd8efe7357a1e84'; // Replace with your actual API key
+
+    const API_KEY = 'fc6c83f512362814d41b52eaec726a250e8561f0ed992e9dfdc3339846b41f1928a70b5b782b611403129be2f58a594c';
+    const form = new FormData();
+    form.append('prompt', prompt);
+    
+    try {
+      const response = await fetch('https://clipdrop-api.co/text-to-image/v1', {
+        method: 'POST',
+        headers: {
+          'x-api-key': API_KEY,
+        },
+        body: form,
+      });
+      
+      if (!response.ok) {
+        throw new Error(`ClipDrop API error: ${response.status}`);
+      }
+      
+      const buffer = await response.arrayBuffer();
+      const blob = new Blob([buffer], { type: 'image/png' });
+      const imageUrl = URL.createObjectURL(blob);
+      
+      console.log("ClipDrop image generated successfully");
+      return imageUrl;
+    } catch (error) {
+      console.error("Error generating with ClipDrop:", error);
+      throw error;
+    }
+  };
 
   // Loader Component
   const LoaderComponent = () => (
