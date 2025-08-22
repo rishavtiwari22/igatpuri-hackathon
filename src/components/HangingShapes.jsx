@@ -1,20 +1,14 @@
 // HangingShapes.jsx
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import ProgressTracker from "./ProgressTracker";
-import { computeMSSSIM, getQualityDescription, formatDetailedScores } from "../utils/imageComparison";
+import { computeMSSSIM, getQualityDescription, formatDetailedScores, generateFeedback } from "../utils/imageComparison";
 import "./HangingShapes.css";
 import image1 from "../assets/car.jpg";
 import image2 from "../assets/horse.jpg";
 import image3 from "../assets/line_mountain.jpg";
 import image4 from "../assets/oul.jpg";
 import image5 from "../assets/sheep.avif";
-
-import image6 from "./images/car.png";
-import image7 from "./images/foxes.png";
-import image8 from "./images/llama.jpg";
-import image9 from "./images/owl.png";
-import image10 from "./images/van.jpg";
 
 const shapes = [
   { type: "circle", left: "10%", rope: "rope-1", image: image1 },
@@ -26,7 +20,7 @@ const shapes = [
 ];
 
 // Feedback Component for comparison results - Memoized and moved outside to prevent re-creation
-const FeedbackComponent = React.memo(({ selectedImage, comparisonResult, isComparing }) => {
+const FeedbackComponent = React.memo(({ selectedImage, comparisonResult, isComparing, isSpeaking, speakFeedback }) => {
   // Calculate progress percentages for horizontal bars
   const targetReadiness = selectedImage ? 100 : 0;
   const matchLevel = comparisonResult && !comparisonResult.error ? comparisonResult.percentage : 0;
@@ -226,6 +220,38 @@ const FeedbackComponent = React.memo(({ selectedImage, comparisonResult, isCompa
             </div>
           </motion.div>
         )}
+        {/* Feedback messages */}
+        {comparisonResult.feedback && comparisonResult.feedback.length > 0 && (
+          <motion.div
+            className="feedback-messages"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 1.1 }}
+          >
+            <h4>Improvement Suggestions:</h4>
+            <ul>
+              {comparisonResult.feedback.map((msg, index) => (
+                <motion.li
+                  key={index}
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 1.2 + index * 0.1 }}
+                >
+                  {msg}
+                </motion.li>
+              ))}
+            </ul>
+            <motion.button
+              className="speak-button"
+              onClick={() => speakFeedback(comparisonResult.feedback.join(" "))}
+              disabled={isSpeaking}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              {isSpeaking ? "Speaking..." : "Speak Feedback"}
+            </motion.button>
+          </motion.div>
+        )}
       </motion.div>
     );
   }
@@ -378,6 +404,7 @@ export default function HangingShapes() {
     return savedProgress ? JSON.parse(savedProgress) : [0];
   });
   const [showUnlockNotification, setShowUnlockNotification] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
 
 
   // Available models for image generation
@@ -385,6 +412,19 @@ export default function HangingShapes() {
     { id: "pollinations", name: "Pollinations AI", description: "Fast and reliable" },
     { id: "clipdrop", name: "ClipDrop", description: "High quality results" }
   ];
+
+  const speakFeedback = (text) => {
+    if ('speechSynthesis' in window) {
+      setIsSpeaking(true);
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.onend = () => {
+        setIsSpeaking(false);
+      };
+      window.speechSynthesis.speak(utterance);
+    } else {
+      console.log('Text-to-speech not supported in this browser.');
+    }
+  };
 
   // Save progress to localStorage whenever unlockedShapes changes
   useEffect(() => {
@@ -402,15 +442,15 @@ export default function HangingShapes() {
   const images = [image1, image2, image3, image4, image5];
 
   // Pick a random image from `images`
-  function pickRandomImage() {
+  const pickRandomImage = useCallback(() => {
     const randomIndex = 0;
     setSelectedImage(images[randomIndex]);
-  }
+  }, [images]);
 
   // On mount → automatically set a random image
   useEffect(() => {
     pickRandomImage();
-  }, []);
+  }, [pickRandomImage]);
 
   const handleShapeClick = (image, index) => {
     if (unlockedShapes.includes(index)) {
@@ -437,7 +477,7 @@ export default function HangingShapes() {
   };
 
   // Image comparison function
-  const compareImages = async (targetImage, generatedImage) => {
+  const compareImages = useCallback(async (targetImage, generatedImage) => {
     if (!targetImage || !generatedImage) return;
     
     setIsComparing(true);
@@ -461,7 +501,7 @@ export default function HangingShapes() {
     } finally {
       setIsComparing(false);
     }
-  };
+  }, []);
 
   // Effect to automatically compare when both images are available AND generation is complete
   useEffect(() => {
@@ -469,7 +509,7 @@ export default function HangingShapes() {
       console.log("Auto-comparing images after generation completed...");
       compareImages(selectedImage, AIGeneratedimg);
     }
-  }, [selectedImage, AIGeneratedimg, isGenerating]);
+  }, [selectedImage, AIGeneratedimg, isGenerating, isComparing, compareImages]);
 
   // Check for progression after comparison
   useEffect(() => {
@@ -522,7 +562,7 @@ export default function HangingShapes() {
         }
       }
     }
-  }, [comparisonResult, unlockedShapes, shapes, selectedImage]);
+  }, [comparisonResult, unlockedShapes, shapes, selectedImage, playSuccessSound]);
 
   // Sound generation functions
   const createVictorySound = () => {
@@ -540,7 +580,7 @@ export default function HangingShapes() {
     
     let time = audioContext.currentTime;
     
-    notes.forEach((note, index) => {
+    notes.forEach((note) => {
       const oscillator = audioContext.createOscillator();
       const gainNode = audioContext.createGain();
       const filter = audioContext.createBiquadFilter();
@@ -696,7 +736,7 @@ export default function HangingShapes() {
     
     let time = audioContext.currentTime;
     
-    chordProgression.forEach((chord, chordIndex) => {
+    chordProgression.forEach((chord) => {
       chord.notes.forEach((freq, noteIndex) => {
         const oscillator = audioContext.createOscillator();
         const gainNode = audioContext.createGain();
@@ -835,7 +875,7 @@ export default function HangingShapes() {
     const img = new Image();
     img.crossOrigin = "anonymous";
     
-    const imageLoadPromise = new Promise((resolve, reject) => {
+    const imageLoadPromise = new Promise((resolve) => {
       img.onload = () => {
         console.log("Pollinations image loaded successfully");
         resolve();
@@ -1168,6 +1208,8 @@ export default function HangingShapes() {
                 selectedImage={selectedImage}
                 comparisonResult={comparisonResult}
                 isComparing={isComparing}
+                isSpeaking={isSpeaking}
+                speakFeedback={speakFeedback}
               />
             </div>
           </div>
