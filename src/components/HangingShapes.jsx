@@ -705,12 +705,23 @@ export default function HangingShapes() {
   ];
 
   const speakFeedback = (text) => {
+    console.log("speakFeedback called with text:", text);
     if ('speechSynthesis' in window) {
+      console.log("SpeechSynthesis API is supported.");
       setIsSpeaking(true);
       const utterance = new SpeechSynthesisUtterance(text);
+      const voices = window.speechSynthesis.getVoices();
+      console.log("Available voices:", voices);
+      utterance.voice = voices[0]; // Use the first available voice
       utterance.onend = () => {
+        console.log("Speech finished.");
         setIsSpeaking(false);
       };
+      utterance.onerror = (event) => {
+        console.error("SpeechSynthesisUtterance.onerror", event);
+        setIsSpeaking(false);
+      };
+      console.log("Attempting to speak...");
       window.speechSynthesis.speak(utterance);
     } else {
       console.log('Text-to-speech not supported in this browser.');
