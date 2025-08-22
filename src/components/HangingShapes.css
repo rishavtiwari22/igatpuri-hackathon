@@ -103,7 +103,99 @@ body {
         transparent 4px
     );
 }
+/* Add these styles to your existing CSS */
+.comparison-results {
+  padding: 15px;
+  background: #f8f9fa;
+  border-radius: 12px;
+  border: 1px solid #e9ecef;
+}
 
+.score-card {
+  margin-bottom: 15px;
+}
+
+.main-score {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 15px;
+  border-radius: 10px;
+  margin-bottom: 12px;
+  text-align: center;
+}
+
+.main-score .score-value {
+  font-size: 1.8em;
+  font-weight: bold;
+}
+
+.score-details {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.score-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.score-label {
+  font-weight: 500;
+  color: #495057;
+  font-size: 0.9em;
+}
+
+.score-value {
+  font-weight: 600;
+  color: #007bff;
+  font-size: 1em;
+}
+
+.loading {
+  text-align: center;
+  padding: 20px;
+  color: #6c757d;
+  font-style: italic;
+}
+
+.raw-data {
+  margin-top: 15px;
+  font-size: 0.8em;
+}
+
+.raw-data summary {
+  cursor: pointer;
+  color: #6c757d;
+  margin-bottom: 5px;
+}
+
+.raw-data pre {
+  background: #2d2d2d;
+  color: #f8f8f2;
+  padding: 10px;
+  border-radius: 5px;
+  overflow-x: auto;
+  font-size: 0.75em;
+}
+
+.image-label {
+  text-align: center;
+  margin-top: 8px;
+  font-size: 0.9em;
+  color: #666;
+  font-weight: 500;
+}
+
+.generate-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
 /* Shapes Base */
 .shape {
     width: 65px;

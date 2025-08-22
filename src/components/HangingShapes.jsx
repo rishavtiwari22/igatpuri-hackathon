@@ -13,8 +13,6 @@ import image8 from "./images/llama.jpg";
 import image9 from "./images/owl.png";
 import image10 from "./images/van.jpg";
 
-import fs from 'fs';
-
 import handleComparison from "./Comparison_req"
 
 const shapes = [
@@ -30,32 +28,37 @@ export default function HangingShapes() {
   const [selectedImage, setSelectedImage] = useState(null);
   const [AIGeneratedimg, setAIGeneratedimg] = useState(null);
   const [prompt, setPrompt] = useState("");
-
+  const [result, setResult] = useState(null);
+  const [loading, setLoading] = useState(false);
+  
   const images = [image6, image7, image8, image9, image10];
+  
   const onCompareClick = async () => {
+    setLoading(true);
     try {
-      const result = await handleComparison(AIGeneratedimg, selectedImage);
-      console.log(result)
-      if (result) {
-        alert("Result: " + JSON.stringify(result));
+      const comparisonResult = await handleComparison(AIGeneratedimg, selectedImage);
+      console.log(comparisonResult);
+      if (comparisonResult && comparisonResult.result) {
+        setResult(comparisonResult.result);
       }
     } catch (error) {
-      alert("Error comparing images!",error);
-      console.log(error)
+      alert("Error comparing images: " + error.message);
+      console.error(error);
+    } finally {
+      setLoading(false);
     }
   };
 
-
   // Pick a random image from `images`
-  // function pickRandomImage() {
-  //   const randomIndex = Math.floor(Math.random() * images.length);
-  //   setSelectedImage(images[randomIndex]);
-  // }
+  function pickRandomImage() {
+    const randomIndex = Math.floor(Math.random() * images.length);
+    setSelectedImage(images[randomIndex]);
+  }
 
   // On mount → automatically set a random image
-  // useEffect(() => {
-  //   pickRandomImage();
-  // }, []);
+  useEffect(() => {
+    pickRandomImage();
+  }, []);
 
   const handleShapeClick = (image) => {
     setSelectedImage(image);
@@ -66,14 +69,23 @@ export default function HangingShapes() {
   };
 
   const handleGenerateClick = () => {
+    if (!prompt.trim()) {
+      alert("Please enter a prompt first!");
+      return;
+    }
+    
     const width = 1024;
     const height = 1024;
     const seed = 42;
     const model = "flux";
     const imageUrl = `https://pollinations.ai/p/${encodeURIComponent(prompt)}?width=${width}&height=${height}&seed=${seed}&model=${model}`;
-  // Writing the buffer to a file named 'image.png'
     console.log("Generate image with prompt:", imageUrl);
     handleGenImg(imageUrl);
+  };
+
+  // Format percentage for display
+  const formatPercentage = (value) => {
+    return `${(value * 100).toFixed(1)}%`;
   };
 
   return (
@@ -100,13 +112,13 @@ export default function HangingShapes() {
 
       <div className="main-content">
         <div className="left-panel">
-
           <div className="generated-image-placeholder">
-            {selectedImage ? (
+            {AIGeneratedimg ? (
               <div className="image-display">
-                <img src={selectedImage} alt="Selected Shape" />
+                <img src={AIGeneratedimg} alt="AI Generated" />
+                <p className="image-label">AI Generated Image</p>
               </div>
-            ) : <p>Target image will appear here</p>}
+            ) : <p>AI generated image will appear here</p>}
           </div>
 
           <div className="generation-controls">
@@ -122,22 +134,73 @@ export default function HangingShapes() {
             </button>
           </div>
         </div>
+
         <div className="right-panel">
           <div className="image-placeholder">
-            {AIGeneratedimg ? (
+            {selectedImage ? (
               <div className="image-display">
-                <img src={AIGeneratedimg} alt="AI Generated" />
+                <img src={selectedImage} alt="Target Shape" />
+                <p className="image-label">Target Image</p>
               </div>
-            ) : <p>Generate image will appear here</p>}
+            ) : <p>Target image will appear here</p>}
           </div>
-          <div className="feedback-placeholder">
-            <p>Matching feedback will appear here</p>
-          </div>
-            <button onClick = {onCompareClick} className = "generate-button"> Generate Feedback </button>
 
+          <div className="feedback-placeholder">
+            {loading ? (
+              <div className="loading">Comparing images...</div>
+            ) : result ? (
+              <div className="comparison-results">
+                <h3>🎯 Comparison Results</h3>
+                
+                <div className="score-card">
+                  <div className="score-item main-score">
+                    <span className="score-label">Overall Similarity</span>
+                    <span className="score-value">{formatPercentage(result.combined)}</span>
+                  </div>
+                  
+                  <div className="score-details">
+                    <div className="score-item">
+                      <span className="score-label">Structural</span>
+                      <span className="score-value">{formatPercentage(result.structural)}</span>
+                    </div>
+                    
+                    <div className="score-item">
+                      <span className="score-label">Edge Similarity</span>
+                      <span className="score-value">{formatPercentage(result.edges)}</span>
+                    </div>
+                    
+                    <div className="score-item">
+                      <span className="score-label">HOG Features</span>
+                      <span className="score-value">{formatPercentage(result.hog_features)}</span>
+                    </div>
+                    
+                    <div className="score-item">
+                      <span className="score-label">Histogram</span>
+                      <span className="score-value">{formatPercentage(result.histogram)}</span>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Optional: Show raw data for debugging */}
+                <details className="raw-data">
+                  <summary>View Raw Data</summary>
+                  <pre>{JSON.stringify(result, null, 2)}</pre>
+                </details>
+              </div>
+            ) : (
+              <p>Click "Generate Feedback" to see comparison results</p>
+            )}
+          </div>
+
+          <button 
+            onClick={onCompareClick} 
+            className="generate-button"
+            disabled={!AIGeneratedimg || !selectedImage || loading}
+          >
+            {loading ? "Comparing..." : "Generate Feedback"}
+          </button>
         </div>
       </div>
     </div>
-
   );
 }
