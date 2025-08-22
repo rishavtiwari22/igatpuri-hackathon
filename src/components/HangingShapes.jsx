@@ -1,8 +1,8 @@
 // HangingShapes.jsx
 import React, { useState, useEffect, useCallback } from "react";
-import { AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import ProgressTracker from "./ProgressTracker";
-import { computeMSSSIM, getQualityDescription, formatDetailedScores } from "../utils/imageComparison";
+import { computeMSSSIM, getQualityDescription, formatDetailedScores, generateFeedback } from "../utils/imageComparison";
 import "./HangingShapes.css";
 import image1 from "../assets/car.jpg";
 import image2 from "../assets/horse.jpg";
