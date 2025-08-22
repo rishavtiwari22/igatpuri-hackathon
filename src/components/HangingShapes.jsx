@@ -13,6 +13,10 @@ import image8 from "./images/llama.jpg";
 import image9 from "./images/owl.png";
 import image10 from "./images/van.jpg";
 
+import fs from 'fs';
+
+import handleComparison from "./Comparison_req"
+
 const shapes = [
   { type: "circle", left: "10%", rope: "rope-1", image: image1 },
   { type: "square", left: "25%", rope: "rope-2", image: image2 },
@@ -28,6 +32,19 @@ export default function HangingShapes() {
   const [prompt, setPrompt] = useState("");
 
   const images = [image6, image7, image8, image9, image10];
+  const onCompareClick = async () => {
+    try {
+      const result = await handleComparison(AIGeneratedimg, selectedImage);
+      console.log(result)
+      if (result) {
+        alert("Result: " + JSON.stringify(result));
+      }
+    } catch (error) {
+      alert("Error comparing images!",error);
+      console.log(error)
+    }
+  };
+
 
   // Pick a random image from `images`
   function pickRandomImage() {
@@ -53,10 +70,8 @@ export default function HangingShapes() {
     const height = 1024;
     const seed = 42;
     const model = "flux";
-    const imageUrl = `https://pollinations.ai/p/${encodeURIComponent(
-      prompt
-    )}?width=${width}&height=${height}&seed=${seed}&model=${model}`;
-
+    const imageUrl = `https://pollinations.ai/p/${encodeURIComponent(prompt)}?width=${width}&height=${height}&seed=${seed}&model=${model}`;
+  // Writing the buffer to a file named 'image.png'
     console.log("Generate image with prompt:", imageUrl);
     handleGenImg(imageUrl);
   };
@@ -116,8 +131,11 @@ export default function HangingShapes() {
           <div className="feedback-placeholder">
             <p>Matching feedback will appear here</p>
           </div>
+            <button onClick = {onCompareClick} className = "generate-button"> Generate Feedback </button>
+
         </div>
       </div>
     </div>
+
   );
 }
