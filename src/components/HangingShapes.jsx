@@ -309,6 +309,7 @@ export default function HangingShapes() {
 
     const API_KEY = 'fc6c83f512362814d41b52eaec726a250e8561f0ed992e9dfdc3339846b41f1928a70b5b782b611403129be2f58a594c'; // Replace with your actual API key
     
+    
     const form = new FormData();
     form.append('prompt', prompt);
     
