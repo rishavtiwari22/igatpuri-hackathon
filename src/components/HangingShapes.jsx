@@ -374,135 +374,223 @@ export default function HangingShapes() {
   };
 
 
-  const handleGenerateClick = async () => {
-    // Don't generate if prompt is empty or already generating
-    if (!prompt.trim() || isGenerating) {
-      console.log("⚠️ Generation blocked - empty prompt or already generating");
-      return;
-    }
-    
-    // Stop any ongoing speech when starting new generation
-    if (isSpeaking) {
-      stopSpeech();
-      setIsSpeaking(false);
-      console.log("🎤 Stopped speech for new generation");
-    }
-    
-    // Cleanup previous blob URL if it exists
-    if (AIGeneratedimg && AIGeneratedimg.startsWith('blob:')) {
-      URL.revokeObjectURL(AIGeneratedimg);
-      console.log("🧙 Cleaned up previous blob URL");
-    }
-    
-    console.log("🚀 Starting new image generation - Resetting comparison flag");
-    setIsGenerating(true);
-    setIsImageLoading(true);
-    setAIGeneratedimg(null);
-    setResult(null);
-    setHasComparedCurrentGeneration(false);
-    
-    // Play generation start sound when generation begins
-    try {
-      playGenerationStartSound();
-    } catch (error) {
-      console.warn("Sound generation failed:", error);
-    }
-    
-    try {
-      let imageUrl;
-      
-      if (selectedModel === "pollinations") {
-        console.log("📸 Generating with Pollinations AI...");
-        imageUrl = await generate_img(prompt);
-      } else if (selectedModel === "clipdrop") {
-        console.log("📸 Generating with ClipDrop AI...");
-        imageUrl = await generateWithClipDrop(prompt);
-      } else {
-        throw new Error(`Unknown model: ${selectedModel}`);
-      }
+// Helper function to validate generation prerequisites
+const canStartGeneration = (prompt, isGenerating) => {
+  if (!prompt.trim() || isGenerating) {
+    console.log("⚠️ Generation blocked - empty prompt or already generating");
+    return false;
+  }
+  return true;
+};
 
-      if (imageUrl) {
-        console.log("✅ Image generation successful - displaying immediately");
-        
-        // Set the image state immediately for instant display but keep loading state
-        setAIGeneratedimg(imageUrl);
-        // Keep isImageLoading true until image actually loads
-        
-        // Wait for image to load before starting comparison
-        if (selectedImage && !hasComparedCurrentGeneration) {
-          console.log("🔄 Waiting for image to load before comparison...");
-          setHasComparedCurrentGeneration(true);
-          
-          // Create image element to ensure it's fully loaded
-          const img = new Image();
-          img.onload = async () => {
-            console.log("🖼️ Image fully loaded, starting comparison...");
-            setIsImageLoading(false); // Now we can hide the loader
-            try {
-              setIsComparing(true);
-              const comparisonResult = await handleComparison(imageUrl, selectedImage);
-              
-              if (comparisonResult && comparisonResult.result) {
-                console.log("✅ Comparison completed:", comparisonResult);
-                setResult(comparisonResult);
-                
-                // Simple speech feedback without blocking
-                if (speechEnabled) {
-                  const score = comparisonResult.result.combined || comparisonResult.combined || 0;
-                  if (score > 0.7 || score > 70) {
-                    try {
-                      speakFeedback(comparisonResult);
-                    } catch (error) {
-                      console.warn("Speech failed:", error);
-                    }
-                  }
-                }
-              } else {
-                console.warn("Comparison failed");
-                setResult({ error: "Comparison failed", combined: 0 });
-              }
-            } catch (error) {
-              console.error("Comparison error:", error);
-              setResult({ error: "Comparison failed", combined: 0 });
-            } finally {
-              setIsComparing(false);
-            }
-          };
-          
-          img.onerror = () => {
-            console.error("❌ Failed to load generated image for comparison");
-            setResult({ error: "Failed to load image", combined: 0 });
-            setIsComparing(false);
-            setIsImageLoading(false);
-          };
-          
-          img.src = imageUrl;
-        } else {
-          // If no comparison needed, just mark loading as complete when image loads
-          const img = new Image();
-          img.onload = () => {
-            setIsImageLoading(false);
-          };
-          img.onerror = () => {
-            setIsImageLoading(false);
-          };
-          img.src = imageUrl;
-        }
-      } else {
-        console.error("Image generation failed - no URL returned");
-      }
-      
-    } catch (error) {
-      console.error("Error generating image:", error);
-      setAIGeneratedimg(null);
-      setIsImageLoading(false);
-      setHasComparedCurrentGeneration(false);
-    } finally {
-      console.log("Image generation complete");
-      setIsGenerating(false);
-      // Note: isImageLoading will be set to false when the image actually loads
-    }
+// Helper function to stop ongoing speech and cleanup
+const stopOngoingSpeech = (isSpeaking, stopSpeech, setIsSpeaking) => {
+  if (isSpeaking) {
+    stopSpeech();
+    setIsSpeaking(false);
+    console.log("🎤 Stopped speech for new generation");
+  }
+};
+
+// Helper function to cleanup previous resources
+const cleanupPreviousResources = (AIGeneratedimg) => {
+  if (AIGeneratedimg && AIGeneratedimg.startsWith('blob:')) {
+    URL.revokeObjectURL(AIGeneratedimg);
+    console.log("🧙 Cleaned up previous blob URL");
+  }
+};
+
+// Helper function to reset generation state
+const resetGenerationState = (setters) => {
+  const {
+    setIsGenerating,
+    setIsImageLoading,
+    setAIGeneratedimg,
+    setResult,
+    setHasComparedCurrentGeneration
+  } = setters;
+
+  console.log("🚀 Starting new image generation - Resetting comparison flag");
+  setIsGenerating(true);
+  setIsImageLoading(true);
+  setAIGeneratedimg(null);
+  setResult(null);
+  setHasComparedCurrentGeneration(false);
+};
+
+// Helper function to play generation sound safely
+const playGenerationSoundSafely = (playGenerationStartSound) => {
+  try {
+    playGenerationStartSound();
+  } catch (error) {
+    console.warn("Sound generation failed:", error);
+  }
+};
+
+// Helper function to generate image based on selected model
+const generateImageByModel = async (selectedModel, prompt, generate_img, generateWithClipDrop) => {
+  let imageUrl;
+  
+  if (selectedModel === "pollinations") {
+    console.log("📸 Generating with Pollinations AI...");
+    imageUrl = await generate_img(prompt);
+  } else if (selectedModel === "clipdrop") {
+    console.log("📸 Generating with ClipDrop AI...");
+    imageUrl = await generateWithClipDrop(prompt);
+  } else {
+    throw new Error(`Unknown model: ${selectedModel}`);
+  }
+  
+  return imageUrl;
+};
+
+// Helper function to handle image loading and comparison
+const handleImageLoadingAndComparison = (imageUrl, setters, comparisonParams) => {
+  const { setAIGeneratedimg, setIsImageLoading, setHasComparedCurrentGeneration } = setters;
+  const { selectedImage, handleComparison, setIsComparing, setResult, speechEnabled, speakFeedback } = comparisonParams;
+  
+  console.log("✅ Image generation successful - displaying immediately");
+  setAIGeneratedimg(imageUrl);
+  
+  // Always check if we have selectedImage for comparison, ignore hasComparedCurrentGeneration flag here
+  // since we already reset it at the start of generation
+  if (selectedImage) {
+    console.log("🔍 Selected image found, starting comparison flow...");
+    setHasComparedCurrentGeneration(true);
+    handleImageComparisonFlow(imageUrl, setIsImageLoading, comparisonParams);
+  } else {
+    console.log("📷 No selected image, skipping comparison...");
+    handleSimpleImageLoad(imageUrl, setIsImageLoading);
+  }
+};
+
+// Helper function to handle image comparison flow
+const handleImageComparisonFlow = (imageUrl, setIsImageLoading, comparisonParams) => {
+  const { selectedImage, handleComparison, setIsComparing, setResult, speechEnabled, speakFeedback } = comparisonParams;
+  
+  console.log("🔄 Waiting for image to load before comparison...");
+  
+  const img = new Image();
+  img.onload = async () => {
+    console.log("🖼️ Image fully loaded, starting comparison...");
+    setIsImageLoading(false);
+    await performComparison(imageUrl, selectedImage, handleComparison, setIsComparing, setResult, speechEnabled, speakFeedback);
   };
+  
+  img.onerror = () => {
+    console.error("❌ Failed to load generated image for comparison");
+    setResult({ error: "Failed to load image", combined: 0 });
+    setIsComparing(false);
+    setIsImageLoading(false);
+  };
+  
+  img.src = imageUrl;
+};
+
+// Helper function to perform the actual comparison
+const performComparison = async (imageUrl, selectedImage, handleComparison, setIsComparing, setResult, speechEnabled, speakFeedback) => {
+  try {
+    setIsComparing(true);
+    const comparisonResult = await handleComparison(imageUrl, selectedImage);
+    
+    if (comparisonResult && comparisonResult.result) {
+      console.log("✅ Comparison completed:", comparisonResult);
+      setResult(comparisonResult);
+      handleSpeechFeedback(comparisonResult, speechEnabled, speakFeedback);
+    } else {
+      console.warn("Comparison failed");
+      setResult({ error: "Comparison failed", combined: 0 });
+    }
+  } catch (error) {
+    console.error("Comparison error:", error);
+    setResult({ error: "Comparison failed", combined: 0 });
+  } finally {
+    setIsComparing(false);
+  }
+};
+
+// Helper function to handle speech feedback
+const handleSpeechFeedback = (comparisonResult, speechEnabled, speakFeedback) => {
+  if (speechEnabled) {
+    const score = comparisonResult.result.combined || comparisonResult.combined || 0;
+    if (score > 0.7 || score > 70) {
+      try {
+        speakFeedback(comparisonResult);
+      } catch (error) {
+        console.warn("Speech failed:", error);
+      }
+    }
+  }
+};
+
+// Helper function to handle simple image loading (no comparison)
+const handleSimpleImageLoad = (imageUrl, setIsImageLoading) => {
+  const img = new Image();
+  img.onload = () => setIsImageLoading(false);
+  img.onerror = () => setIsImageLoading(false);
+  img.src = imageUrl;
+};
+
+// Helper function to handle generation errors
+const handleGenerationError = (error, setters) => {
+  const { setAIGeneratedimg, setIsImageLoading, setHasComparedCurrentGeneration, setIsGenerating } = setters;
+  
+  console.error("Error generating image:", error);
+  setAIGeneratedimg(null);
+  setIsImageLoading(false);
+  setHasComparedCurrentGeneration(false);
+  setIsGenerating(false);
+};
+
+// Main refactored function - now much cleaner and focused
+const handleGenerateClick = async () => {
+  // Validation
+  if (!canStartGeneration(prompt, isGenerating)) return;
+  
+  // Cleanup and preparation
+  stopOngoingSpeech(isSpeaking, stopSpeech, setIsSpeaking);
+  cleanupPreviousResources(AIGeneratedimg);
+  
+  // State management
+  const stateSetters = {
+    setIsGenerating,
+    setIsImageLoading,
+    setAIGeneratedimg,
+    setResult,
+    setHasComparedCurrentGeneration
+  };
+  resetGenerationState(stateSetters);
+  
+  // Sound feedback
+  playGenerationSoundSafely(playGenerationStartSound);
+  
+  try {
+    // Image generation
+    const imageUrl = await generateImageByModel(selectedModel, prompt, generate_img, generateWithClipDrop);
+    
+    if (imageUrl) {
+      // Comparison parameters - removed hasComparedCurrentGeneration from params
+      const comparisonParams = {
+        selectedImage,
+        handleComparison,
+        setIsComparing,
+        setResult,
+        speechEnabled,
+        speakFeedback
+      };
+      
+      handleImageLoadingAndComparison(imageUrl, stateSetters, comparisonParams);
+    } else {
+      console.error("Image generation failed - no URL returned");
+    }
+    
+  } catch (error) {
+    handleGenerationError(error, stateSetters);
+  } finally {
+    console.log("Image generation complete");
+    setIsGenerating(false);
+  }
+};
   const handleKeyPress = (e) => {
     if (e.key === 'Enter') {
       handleGenerateClick();
@@ -727,7 +815,7 @@ export default function HangingShapes() {
                 {(isGenerating || isImageLoading) && <LoaderComponent />}
               </AnimatePresence>
               {(() => {
-                console.log("Render check - AIGeneratedimg:", !!AIGeneratedimg, "isGenerating:", isGenerating, "isImageLoading:", isImageLoading);
+                // console.log("Render check - AIGeneratedimg:", !!AIGeneratedimg, "isGenerating:", isGenerating, "isImageLoading:", isImageLoading);
                 
                 if (AIGeneratedimg && !isGenerating && !isImageLoading) {
                   return (
