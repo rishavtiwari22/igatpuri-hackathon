@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "framer-motion": "^12.23.12",
+    "kokoro-js": "^1.2.1",
     "matter-js": "^0.20.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",

@@ -3,29 +3,30 @@ import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import ProgressTracker from "./ProgressTracker";
 import { computeMSSSIM, getQualityDescription, formatDetailedScores } from "../utils/imageComparison";
-import { generateWithClipDrop,generateWithPollinations } from "./Image_models";
+import { generateWithClipDrop } from "./Image_models";
 import "./HangingShapes.css";
 import image1 from "../assets/car.jpg";
 import image2 from "../assets/horse.jpg";
 import image3 from "../assets/line_mountain.jpg";
 import image4 from "../assets/oul.jpg";
 import image5 from "../assets/sheep.avif";
-import FeedbackComponent from "./FeedbackComponent";
 import image6 from "./images/car.png";
 import image7 from "./images/foxes.png";
 import image8 from "./images/llama.jpg";
 import image9 from "./images/owl.png";
 import image10 from "./images/van.jpg";
+import FeedbackComponent from "./FeedbackComponent";
 import handleComparison from "./Comparison_req";
 import { playClickSound,playGenerationStartSound,playSuccessSound,createCheerSound,createVictorySound,createClickSound,createGenerationStartSound } from "./Sound_Generation";
+import { speakFeedback, stopSpeech, getSpeechStatus, testSpeech } from "../utils/speechSynthesis";
 
 const shapes = [
-  { type: "circle", left: "10%", rope: "rope-1", image: image1 },
-  { type: "square", left: "25%", rope: "rope-2", image: image2 },
-  { type: "triangle", left: "40%", rope: "rope-3", image: image3 },
-  { type: "diamond", left: "55%", rope: "rope-4", image: image4 },
-  { type: "hexagon", left: "70%", rope: "rope-5", image: image5 },
-  { type: "star", left: "85%", rope: "rope-6", image: image1 },
+  { type: "circle", left: "10%", rope: "rope-1", image: image1, name: "Car" },
+  { type: "square", left: "25%", rope: "rope-2", image: image2, name: "Horse" },
+  { type: "triangle", left: "40%", rope: "rope-3", image: image3, name: "Mountain" },
+  { type: "diamond", left: "55%", rope: "rope-4", image: image4, name: "Owl" },
+  { type: "hexagon", left: "70%", rope: "rope-5", image: image5, name: "Sheep" },
+  { type: "star", left: "85%", rope: "rope-6", image: image6, name: "Car (PNG)" },
 ];
 
 
@@ -39,6 +40,10 @@ export default function HangingShapes() {
   const [comparisonResult, setComparisonResult] = useState(null);
   const [result, setResult] = useState(null)
   const [selectedModel, setSelectedModel] = useState("pollinations");
+  const [hasComparedCurrentGeneration, setHasComparedCurrentGeneration] = useState(false); // Flag to prevent multiple comparisons
+  const [speechEnabled, setSpeechEnabled] = useState(true); // Speech feedback preference
+  const [isSpeaking, setIsSpeaking] = useState(false); // Speech status
+  const [isImageLoading, setIsImageLoading] = useState(false); // Image loading status
   const [unlockedShapes, setUnlockedShapes] = useState(() => {
     // For testing - uncomment the next line to reset progress
     // localStorage.removeItem("unlockedShapes");
@@ -54,46 +59,58 @@ export default function HangingShapes() {
     { id: "clipdrop", name: "ClipDrop", description: "High quality results" }
   ];
 
-  // // Save progress to localStorage whenever unlockedShapes changes
+  // Save progress to localStorage whenever unlockedShapes changes
   useEffect(() => {
     localStorage.setItem("unlockedShapes", JSON.stringify(unlockedShapes));
     console.log("Progress saved to localStorage:", unlockedShapes);
   }, [unlockedShapes]);
 
-  // // Cleanup on component unmount
-  // useEffect(() => {
-  //   return () => {
-  //     // Cleanup function if needed
-  //   };
-  // }, []);
-
-  // const images = [image1, image2, image3, image4, image5,image6,image7,image8,image9,image10];
-  const images = [image6,image7,image8,image9,image10];
-
-  // Pick a random image from `images`
-   function pickRandomImage() {
-    const randomIndex = Math.floor(Math.random() * images.length);
-    setSelectedImage(images[randomIndex]);
-  }
-
-  // On mount → automatically set a random image
+  // Set initial target image to the first unlocked shape
   useEffect(() => {
-    pickRandomImage();
+    if (unlockedShapes.length > 0) {
+      const firstUnlockedIndex = unlockedShapes[0];
+      if (shapes[firstUnlockedIndex]) {
+        setSelectedImage(shapes[firstUnlockedIndex].image);
+      }
+    }
   }, []);
+
+  // Debug: Track AIGeneratedimg state changes
+  useEffect(() => {
+    console.log("🔍 AIGeneratedimg state changed:", AIGeneratedimg);
+  }, [AIGeneratedimg]);
+
+  // Cleanup: Stop speech when component unmounts
+  useEffect(() => {
+    return () => {
+      if (isSpeaking) {
+        stopSpeech();
+        console.log("🎤 Speech stopped on component unmount");
+      }
+      // Cleanup blob URLs to prevent memory leaks
+      if (AIGeneratedimg && AIGeneratedimg.startsWith('blob:')) {
+        URL.revokeObjectURL(AIGeneratedimg);
+        console.log("🧙 Cleaned up blob URL on unmount");
+      }
+    };
+  }, [isSpeaking, AIGeneratedimg]);
 
   const handleShapeClick = (image, index) => {
     if (unlockedShapes.includes(index)) {
-      // setSelectedImage(image);
+      // Stop any ongoing speech
+      if (isSpeaking) {
+        stopSpeech();
+        setIsSpeaking(false);
+      }
+      
+      setSelectedImage(image); // Set the target image
       setComparisonResult(null); // Clear previous comparison when selecting new target
+      setResult(null); // Clear previous results
+      setHasComparedCurrentGeneration(false); // Reset comparison flag for new target
       playClickSound(); // Play click sound when shape is successfully clicked
       
-      // If there's already a generated image, compare with the new target
-      if (AIGeneratedimg && !isGenerating && !isComparing) {
-        setTimeout(() => {
-          console.log("Comparing with new target image...",image,AIGeneratedimg);
-          handleComparison(image,AIGeneratedimg);
-        }, 300);
-      }
+      console.log(`🎯 Shape ${shapes[index].name} clicked! Setting target image:`, image);
+      console.log("📊 Target image set. Generate an image to start comparison.");
     } else {
       console.log("Shape is locked");
     }
@@ -264,46 +281,6 @@ export default function HangingShapes() {
   //   }
   // };
   
-  // Image generation functions for different models
-  const generateWithPollinations = async (prompt) => {
-    const width = 1024;
-    const height = 1024;
-    const seed = 42;
-    const model = "flux";
-    
-    const encodedPrompt = encodeURIComponent(prompt);
-    const params = new URLSearchParams({
-      width: width,
-      height: height,
-      seed: seed,
-      model: model,
-      nologo: 'true'
-    });
-    
-    const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?${params.toString()}`;
-    
-    // Create image with proper loading
-    const img = new Image();
-    img.crossOrigin = "anonymous";
-    
-    const imageLoadPromise = new Promise((resolve, reject) => {
-      img.onload = () => {
-        console.log("Pollinations image loaded successfully");
-        resolve();
-      };
-      
-      img.onerror = (error) => {
-        console.warn("Failed to load Pollinations image:", error);
-        resolve(); // Still resolve to continue the flow
-      };
-      
-      img.src = imageUrl;
-    });
-    
-    await imageLoadPromise;
-    return imageUrl;
-  };
-
   const generateWithClipDrop = async (prompt) => {
     // Note: You'll need to add your ClipDrop API key here
 
@@ -339,102 +316,282 @@ export default function HangingShapes() {
   };
 
   // Loader Component
-  const LoaderComponent = () => (
-    <motion.div 
-      className="loader-container"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      transition={{ duration: 0.3 }}
-    >
-      <div className="loader-wrapper">
-        <div className="loader-circle">
-          <div className="loader-inner-circle"></div>
-          <div className="loader-particles">
-            <div className="loader-particle"></div>
-            <div className="loader-particle"></div>
-            <div className="loader-particle"></div>
-            <div className="loader-particle"></div>
-            <div className="loader-particle"></div>
-            <div className="loader-particle"></div>
+  const LoaderComponent = () => {
+    console.log("⌛ Loader component rendered - isGenerating:", isGenerating);
+    return (
+      <motion.div 
+        className="loader-container"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.3 }}
+      >
+        <div className="loader-wrapper">
+          <div className="loader-circle">
+            <div className="loader-inner-circle"></div>
+            <div className="loader-particles">
+              <div className="loader-particle"></div>
+              <div className="loader-particle"></div>
+              <div className="loader-particle"></div>
+              <div className="loader-particle"></div>
+              <div className="loader-particle"></div>
+              <div className="loader-particle"></div>
+            </div>
+          </div>
+          <motion.div 
+            className="loader-text"
+            animate={{ opacity: [0.5, 1, 0.5] }}
+            transition={{ repeat: Infinity, duration: 2 }}
+          >
+            Generating your image...
+          </motion.div>
+          <div className="loader-subtext">
+            Please wait while AI creates your masterpiece
           </div>
         </div>
-        <motion.div 
-          className="loader-text"
-          animate={{ opacity: [0.5, 1, 0.5] }}
-          transition={{ repeat: Infinity, duration: 2 }}
-        >
-          Generating your image...
-        </motion.div>
-        <div className="loader-subtext">
-          Please wait while AI creates your masterpiece
-        </div>
-      </div>
-    </motion.div>
-  );
-  const generate_img = () => {
+      </motion.div>
+    );
+  };
+  const generate_img = async (prompt) => {
+    console.log("🎨 Starting image generation with prompt:", prompt);
+    
+    // Use the simplified generation pattern
     const width = 1024;
     const height = 1024;
-    const seed = 42;
-    const model = "flux";
-    const imageUrl = `https://pollinations.ai/p/${encodeURIComponent(prompt)}?width=${width}&height=${height}&seed=${seed}&model=${model}`;
-  // Writing the buffer to a file named 'image.png'
-    console.log("Generate image with prompt:", imageUrl);
-    setAIGeneratedimg(imageUrl);
-  };
-
-
-  const handleGenerateClick = async () => {
-    // Don't generate if prompt is empty or already generating
-    if (!prompt.trim() || isGenerating) return;
-    setIsGenerating(true);
-    setAIGeneratedimg(null); // Clear previous image
-    // Play generation start sound when generation begins
-    playGenerationStartSound();
+    const seed = Math.floor(Math.random() * 1000);
+    const encodedPrompt = encodeURIComponent(prompt);
+    const params = new URLSearchParams({
+        width: width,
+        height: height,
+        seed: seed,
+        model: "flux",
+        nologo: 'true'
+    });
     
-    try {
-      let imageUrl;
-      
-      if (selectedModel === "pollinations") {
-        imageUrl = generate_img(prompt);
-      } else if (selectedModel === "clipdrop") {
-        imageUrl = await generateWithClipDrop(prompt);
-      }
+    const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?${params.toString()}`;
+    
+    console.log("✅ Image URL generated:", imageUrl);
+    return imageUrl;
+  };
 
-      console.log("Generated image with", selectedModel, ":", imageUrl);
-      
-      // Trigger comparison after a short delay to ensure state is updated
-    //   setTimeout(() => {
-    //     if (selectedImage) {
-    //       // console.log("Triggering MS-SSIM comparison after image generation...");
-    //       console.log("The Images are ",selectedImage,imageUrl)
-    //       // handleComparison(imageUrl,selectedImage);
-    //     }
-    //   }, 500);
-    } catch (error) {
-      console.error("Error generating image:", error);
-      // setComparisonResult({ 
-      //   error: `Failed to generate image with ${selectedModel}: ${error.message}`,
-      //   percentage: 0 
-      // });
-    } finally {
-      setIsGenerating(false);
-    }
+
+// Helper function to validate generation prerequisites
+const canStartGeneration = (prompt, isGenerating) => {
+  if (!prompt.trim() || isGenerating) {
+    console.log("⚠️ Generation blocked - empty prompt or already generating");
+    return false;
+  }
+  return true;
+};
+
+// Helper function to stop ongoing speech and cleanup
+const stopOngoingSpeech = (isSpeaking, stopSpeech, setIsSpeaking) => {
+  if (isSpeaking) {
+    stopSpeech();
+    setIsSpeaking(false);
+    console.log("🎤 Stopped speech for new generation");
+  }
+};
+
+// Helper function to cleanup previous resources
+const cleanupPreviousResources = (AIGeneratedimg) => {
+  if (AIGeneratedimg && AIGeneratedimg.startsWith('blob:')) {
+    URL.revokeObjectURL(AIGeneratedimg);
+    console.log("🧙 Cleaned up previous blob URL");
+  }
+};
+
+// Helper function to reset generation state
+const resetGenerationState = (setters) => {
+  const {
+    setIsGenerating,
+    setIsImageLoading,
+    setAIGeneratedimg,
+    setResult,
+    setHasComparedCurrentGeneration
+  } = setters;
+
+  console.log("🚀 Starting new image generation - Resetting comparison flag");
+  setIsGenerating(true);
+  setIsImageLoading(true);
+  setAIGeneratedimg(null);
+  setResult(null);
+  setHasComparedCurrentGeneration(false);
+};
+
+// Helper function to play generation sound safely
+const playGenerationSoundSafely = (playGenerationStartSound) => {
+  try {
+    playGenerationStartSound();
+  } catch (error) {
+    console.warn("Sound generation failed:", error);
+  }
+};
+
+// Helper function to generate image based on selected model
+const generateImageByModel = async (selectedModel, prompt, generate_img, generateWithClipDrop) => {
+  let imageUrl;
+  
+  if (selectedModel === "pollinations") {
+    console.log("📸 Generating with Pollinations AI...");
+    imageUrl = await generate_img(prompt);
+  } else if (selectedModel === "clipdrop") {
+    console.log("📸 Generating with ClipDrop AI...");
+    imageUrl = await generateWithClipDrop(prompt);
+  } else {
+    throw new Error(`Unknown model: ${selectedModel}`);
+  }
+  
+  return imageUrl;
+};
+
+// Helper function to handle image loading and comparison
+const handleImageLoadingAndComparison = (imageUrl, setters, comparisonParams) => {
+  const { setAIGeneratedimg, setIsImageLoading, setHasComparedCurrentGeneration } = setters;
+  const { selectedImage, handleComparison, setIsComparing, setResult, speechEnabled, speakFeedback } = comparisonParams;
+  
+  console.log("✅ Image generation successful - displaying immediately");
+  setAIGeneratedimg(imageUrl);
+  
+  // Always check if we have selectedImage for comparison, ignore hasComparedCurrentGeneration flag here
+  // since we already reset it at the start of generation
+  if (selectedImage) {
+    console.log("🔍 Selected image found, starting comparison flow...");
+    setHasComparedCurrentGeneration(true);
+    handleImageComparisonFlow(imageUrl, setIsImageLoading, comparisonParams);
+  } else {
+    console.log("📷 No selected image, skipping comparison...");
+    handleSimpleImageLoad(imageUrl, setIsImageLoading);
+  }
+};
+
+// Helper function to handle image comparison flow
+const handleImageComparisonFlow = (imageUrl, setIsImageLoading, comparisonParams) => {
+  const { selectedImage, handleComparison, setIsComparing, setResult, speechEnabled, speakFeedback } = comparisonParams;
+  
+  console.log("🔄 Waiting for image to load before comparison...");
+  
+  const img = new Image();
+  img.onload = async () => {
+    console.log("🖼️ Image fully loaded, starting comparison...");
+    setIsImageLoading(false);
+    await performComparison(imageUrl, selectedImage, handleComparison, setIsComparing, setResult, speechEnabled, speakFeedback);
   };
-const onCompareClick = async () => {
-    try {
-      const comparisonresult = await handleComparison(AIGeneratedimg, selectedImage);
-      console.log(comparisonresult)
-      if (comparisonresult) {
-        setResult(comparisonresult);
-        // setComparisonResult(comparisonResult.result)
-        // console.log(`The comparison Result is ${result["combined"]}`)
+  
+  img.onerror = () => {
+    console.error("❌ Failed to load generated image for comparison");
+    setResult({ error: "Failed to load image", combined: 0 });
+    setIsComparing(false);
+    setIsImageLoading(false);
+  };
+  
+  img.src = imageUrl;
+};
+
+// Helper function to perform the actual comparison
+const performComparison = async (imageUrl, selectedImage, handleComparison, setIsComparing, setResult, speechEnabled, speakFeedback) => {
+  try {
+    setIsComparing(true);
+    const comparisonResult = await handleComparison(imageUrl, selectedImage);
+    
+    if (comparisonResult && comparisonResult.result) {
+      console.log("✅ Comparison completed:", comparisonResult);
+      setResult(comparisonResult);
+      handleSpeechFeedback(comparisonResult, speechEnabled, speakFeedback);
+    } else {
+      console.warn("Comparison failed");
+      setResult({ error: "Comparison failed", combined: 0 });
+    }
+  } catch (error) {
+    console.error("Comparison error:", error);
+    setResult({ error: "Comparison failed", combined: 0 });
+  } finally {
+    setIsComparing(false);
+  }
+};
+
+// Helper function to handle speech feedback
+const handleSpeechFeedback = (comparisonResult, speechEnabled, speakFeedback) => {
+  if (speechEnabled) {
+    const score = comparisonResult.result.combined || comparisonResult.combined || 0;
+    if (score > 0.7 || score > 70) {
+      try {
+        speakFeedback(comparisonResult);
+      } catch (error) {
+        console.warn("Speech failed:", error);
       }
-    } catch (error) {
-      alert("Error comparing images!",error);
-      console.log(error)
     }
+  }
+};
+
+// Helper function to handle simple image loading (no comparison)
+const handleSimpleImageLoad = (imageUrl, setIsImageLoading) => {
+  const img = new Image();
+  img.onload = () => setIsImageLoading(false);
+  img.onerror = () => setIsImageLoading(false);
+  img.src = imageUrl;
+};
+
+// Helper function to handle generation errors
+const handleGenerationError = (error, setters) => {
+  const { setAIGeneratedimg, setIsImageLoading, setHasComparedCurrentGeneration, setIsGenerating } = setters;
+  
+  console.error("Error generating image:", error);
+  setAIGeneratedimg(null);
+  setIsImageLoading(false);
+  setHasComparedCurrentGeneration(false);
+  setIsGenerating(false);
+};
+
+// Main refactored function - now much cleaner and focused
+const handleGenerateClick = async () => {
+  // Validation
+  if (!canStartGeneration(prompt, isGenerating)) return;
+  
+  // Cleanup and preparation
+  stopOngoingSpeech(isSpeaking, stopSpeech, setIsSpeaking);
+  cleanupPreviousResources(AIGeneratedimg);
+  
+  // State management
+  const stateSetters = {
+    setIsGenerating,
+    setIsImageLoading,
+    setAIGeneratedimg,
+    setResult,
+    setHasComparedCurrentGeneration
   };
+  resetGenerationState(stateSetters);
+  
+  // Sound feedback
+  playGenerationSoundSafely(playGenerationStartSound);
+  
+  try {
+    // Image generation
+    const imageUrl = await generateImageByModel(selectedModel, prompt, generate_img, generateWithClipDrop);
+    
+    if (imageUrl) {
+      // Comparison parameters - removed hasComparedCurrentGeneration from params
+      const comparisonParams = {
+        selectedImage,
+        handleComparison,
+        setIsComparing,
+        setResult,
+        speechEnabled,
+        speakFeedback
+      };
+      
+      handleImageLoadingAndComparison(imageUrl, stateSetters, comparisonParams);
+    } else {
+      console.error("Image generation failed - no URL returned");
+    }
+    
+  } catch (error) {
+    handleGenerationError(error, stateSetters);
+  } finally {
+    console.log("Image generation complete");
+    setIsGenerating(false);
+  }
+};
   const handleKeyPress = (e) => {
     if (e.key === 'Enter') {
       handleGenerateClick();
@@ -603,6 +760,38 @@ const onCompareClick = async () => {
                   </select>
                 </div>
                 
+                {/* Speech Control Toggle */}
+                <motion.button
+                  onClick={() => {
+                    if (isSpeaking) {
+                      stopSpeech();
+                      setIsSpeaking(false);
+                    }
+                    setSpeechEnabled(!speechEnabled);
+                    console.log(`🎤 Speech feedback ${!speechEnabled ? 'enabled' : 'disabled'}`);
+                  }}
+                  className={`speech-toggle ${speechEnabled ? 'enabled' : 'disabled'}`}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  title={speechEnabled ? 'Disable voice feedback' : 'Enable voice feedback'}
+                  style={{
+                    padding: '8px 12px',
+                    borderRadius: '6px',
+                    border: 'none',
+                    backgroundColor: speechEnabled ? '#10b981' : '#6b7280',
+                    color: 'white',
+                    fontSize: '14px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  <span>{speechEnabled ? '🎤' : '🅾️'}</span>
+                  <span>{isSpeaking ? 'Speaking...' : (speechEnabled ? 'Voice On' : 'Voice Off')}</span>
+                </motion.button>
+                
                 <motion.button 
                   onClick={handleGenerateClick} 
                   className="generate-button"
@@ -624,26 +813,135 @@ const onCompareClick = async () => {
           <div className="right-panel">
             <div className="image-placeholder" style={{ position: 'relative' }}>
               <AnimatePresence>
-                {isGenerating && <LoaderComponent />}
+                {(isGenerating || isImageLoading) && <LoaderComponent />}
               </AnimatePresence>
-              {AIGeneratedimg ? (
+              {(() => {
+                // console.log("Render check - AIGeneratedimg:", !!AIGeneratedimg, "isGenerating:", isGenerating, "isImageLoading:", isImageLoading);
+                
+                if (AIGeneratedimg && !isGenerating && !isImageLoading) {
+                  return (
+                    <motion.div 
+                      className="image-display"
+                      initial={{ opacity: 0, scale: 0.8 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ duration: 0.3 }} // Faster animation
+                      key={AIGeneratedimg} // Force re-render when URL changes
+                    >
+                      <img 
+                        src={AIGeneratedimg} 
+                        alt="AI Generated" 
+                        onLoad={() => {
+                          console.log("🖼️ Image loaded successfully");
+                          setIsImageLoading(false);
+                        }} 
+                        onError={(e) => {
+                          console.error("Image load failed:", e);
+                          setIsImageLoading(false);
+                        }}
+                        style={{
+                          maxWidth: '100%',
+                          maxHeight: '100%',
+                          objectFit: 'contain',
+                          display: 'block'
+                        }}
+                      />
+                    </motion.div>
+                  );
+                } else if (isGenerating || isImageLoading) {
+                  // Show loading state - loader is handled above in AnimatePresence
+                  return null;
+                } else {
+                  return (
+                    <div style={{ 
+                      display: 'flex', 
+                      flexDirection: 'column', 
+                      alignItems: 'center', 
+                      justifyContent: 'center',
+                      height: '100%',
+                      color: '#999',
+                      textAlign: 'center'
+                    }}>
+                      <p>Generated image will appear here</p>
+                      <small style={{ marginTop: '8px', fontSize: '0.9em' }}>
+                        Enter a prompt and click "Generate Image"
+                      </small>
+                    </div>
+                  );
+                }
+              })()}
+            </div>
+            
+            <div className="feedback-placeholder">
+              {isComparing ? (
                 <motion.div 
-                  className="image-display"
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    height: '100%',
+                    color: '#007bff',
+                    textAlign: 'center'
+                  }}
                   initial={{ opacity: 0, scale: 0.8 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  transition={{ duration: 0.5 }}
+                  exit={{ opacity: 0, scale: 0.8 }}
+                  transition={{ duration: 0.3 }}
                 >
-                  <img src={AIGeneratedimg} alt="AI Generated" />
+                  <motion.div 
+                    style={{
+                      width: '50px',
+                      height: '50px',
+                      border: '4px solid #e3f2fd',
+                      borderTop: '4px solid #007bff',
+                      borderRadius: '50%',
+                      marginBottom: '20px'
+                    }}
+                    animate={{ rotate: 360 }}
+                    transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                  />
+                  <motion.div 
+                    style={{ fontSize: '18px', fontWeight: '600', marginBottom: '8px' }}
+                    animate={{ opacity: [0.5, 1, 0.5] }}
+                    transition={{ duration: 2, repeat: Infinity }}
+                  >
+                    🔍 Analyzing Images
+                  </motion.div>
+                  <motion.div 
+                    style={{ fontSize: '14px', opacity: 0.8, lineHeight: '1.4' }}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 0.8 }}
+                    transition={{ delay: 0.3 }}
+                  >
+                    Using MS-SSIM algorithm to compare<br/>
+                    target vs generated image
+                    {speechEnabled && (
+                      <motion.div
+                        style={{ 
+                          marginTop: '8px', 
+                          fontSize: '12px', 
+                          color: '#10b981',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '4px'
+                        }}
+                        animate={{ opacity: [0.6, 1, 0.6] }}
+                        transition={{ duration: 2, repeat: Infinity }}
+                      >
+                        <span>🎤</span>
+                        <span>Voice feedback ready</span>
+                      </motion.div>
+                    )}
+                  </motion.div>
                 </motion.div>
-              ) : !isGenerating && <p>Generated image will appear here</p>}
-            </div>
-            <button onClick = {onCompareClick}> Generate feedback</button>
-            <div className="feedback-placeholder">
-              <FeedbackComponent 
-                selectedImage={selectedImage}
-                comparisonResult={result}
-                isComparing={isComparing}
-              />
+              ) : (
+                <FeedbackComponent 
+                  selectedImage={selectedImage}
+                  comparisonResult={result}
+                  isComparing={isComparing}
+                />
+              )}
             </div>
           </div>
         </div>
