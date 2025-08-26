@@ -855,7 +855,7 @@ export default function HangingShapes() {
 
   const generateWithClipDrop = async (prompt) => {
     // Note: You'll need to add your ClipDrop API key here
-    const API_KEY = '29da0145f174361bd87d07659016867767d8cb1b8a7cbf2376ddab617f3b7dca4effe88696214e2f5dd8efe7357a1e84'; // Replace with your actual API key
+    const API_KEY = 'fc6c83f512362814d41b52eaec726a250e8561f0ed992e9dfdc3339846b41f1928a70b5b782b611403129be2f58a594c'; // Replace with your actual API key
     
     const form = new FormData();
     form.append('prompt', prompt);
