@@ -6,32 +6,34 @@ import { computeMSSSIM, getQualityDescription, formatDetailedScores } from "../u
 const generateWithPollinations = async (prompt) => {
     const width = 1024;
     const height = 1024;
-    const seed = 42;
+    const seed = Math.floor(Math.random() * 1000);
     const model = "flux";
     
-    // const encodedPrompt = encodeURIComponent(prompt);
-    // const params = new URLSearchParams({
-    //   width: width,
-    //   height: height,
-    //   seed: seed,
-    //   model: model,
-    //   nologo: 'true'
-    // });
+    // Use the reliable Pollinations API endpoint
+    const imageUrl = `https://pollinations.ai/p/${encodeURIComponent(prompt)}?width=${width}&height=${height}&seed=${seed}&model=${model}`;
     
-    const imageUrl = `https://pollinations.ai/p/${encodeURIComponent(prompt)}?width=${width}&height=${height}&seed=${seed}&model=${model}`;    
-    // Create image with proper loading
+    console.log("🌐 Pollinations API URL:", imageUrl);
+    
+    // Create image with proper loading but don't test with CORS
     const img = new Image();
-    img.crossOrigin = "anonymous";
+    // Don't set crossOrigin to avoid CORS issues
     
     const imageLoadPromise = new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        reject(new Error('Image load timeout'));
+      }, 15000); // 15 second timeout
+      
       img.onload = () => {
+        clearTimeout(timeout);
         console.log("Pollinations image loaded successfully");
         resolve();
       };
       
       img.onerror = (error) => {
+        clearTimeout(timeout);
         console.warn("Failed to load Pollinations image:", error);
-        resolve(); // Still resolve to continue the flow
+        // Still resolve to return the URL for display
+        resolve();
       };
       
       img.src = imageUrl;
