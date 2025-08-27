@@ -761,7 +761,7 @@ const handleGenerateClick = async () => {
                 </div>
                 
                 {/* Speech Control Toggle */}
-                <motion.button
+                {/* <motion.button
                   onClick={() => {
                     if (isSpeaking) {
                       stopSpeech();
@@ -790,7 +790,7 @@ const handleGenerateClick = async () => {
                 >
                   <span>{speechEnabled ? '🎤' : '🅾️'}</span>
                   <span>{isSpeaking ? 'Speaking...' : (speechEnabled ? 'Voice On' : 'Voice Off')}</span>
-                </motion.button>
+                </motion.button> */}
                 
                 <motion.button 
                   onClick={handleGenerateClick} 
