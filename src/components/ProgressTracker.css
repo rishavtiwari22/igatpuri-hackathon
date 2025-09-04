@@ -9,6 +9,85 @@
   position: relative;
 }
 
+/* Voice Toggle Button Styles */
+.voice-toggle-progress {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  z-index: 10;
+  font-size: 18px;
+}
+
+.voice-toggle-progress.enabled {
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: white;
+  box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);
+}
+
+.voice-toggle-progress.enabled:hover {
+  background: linear-gradient(135deg, #059669, #047857);
+  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.5);
+  transform: translateX(-50%) translateY(-2px);
+}
+
+.voice-toggle-progress.disabled {
+  background: linear-gradient(135deg, #6b7280, #4b5563);
+  color: white;
+  box-shadow: 0 4px 12px rgba(107, 114, 128, 0.4);
+}
+
+.voice-toggle-progress.disabled:hover {
+  background: linear-gradient(135deg, #4b5563, #374151);
+  box-shadow: 0 6px 16px rgba(107, 114, 128, 0.5);
+  transform: translateX(-50%) translateY(-2px);
+}
+
+/* Animation for playing state */
+.voice-toggle-progress:has-text('📢') {
+  animation: voicePulse 1.5s ease-in-out infinite;
+}
+
+@keyframes voicePulse {
+  0%, 100% { 
+    transform: translateX(-50%) scale(1);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+  }
+  50% { 
+    transform: translateX(-50%) scale(1.1);
+    box-shadow: 0 6px 20px rgba(16, 185, 129, 0.6);
+  }
+}
+
+/* Mobile Responsive Voice Button */
+@media (max-width: 768px) {
+  .voice-toggle-progress {
+    top: 5px;
+    width: 35px;
+    height: 35px;
+    fontSize: 16px;
+  }
+  
+  .progress-list {
+    padding-top: 50px;
+  }
+  
+  .progress-list::before {
+    top: 50px;
+    height: calc(100% - 60px);
+  }
+}
+
 .progress-list {
   display: flex;
   flex-direction: column;
@@ -17,16 +96,16 @@
   justify-content: flex-start;
   align-items: center;
   position: relative;
-  padding-top: 10px;
+  padding-top: 60px; /* Increased to make room for voice button */
 }
 
-/* Vertical progress line starting from top */
+/* Vertical progress line starting from below voice button */
 .progress-list::before {
   content: '';
   position: absolute;
   left: 50%;
-  top: 10px;
-  height: calc(100% - 20px);
+  top: 60px; /* Start below voice button */
+  height: calc(100% - 80px); /* Adjusted for button space */
   width: 3px;
   background: linear-gradient(to bottom, 
     #4ade80 0%, 

@@ -2,7 +2,6 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import ProgressTracker from "./ProgressTracker";
-import { computeMSSSIM, getQualityDescription, formatDetailedScores } from "../utils/imageComparison";
 import { generateWithClipDrop } from "./Image_models";
 import "./HangingShapes.css";
 import image1 from "../assets/car.jpg";
@@ -10,15 +9,10 @@ import image2 from "../assets/horse.jpg";
 import image3 from "../assets/line_mountain.jpg";
 import image4 from "../assets/oul.jpg";
 import image5 from "../assets/sheep.avif";
-import image6 from "./images/car.png";
-import image7 from "./images/foxes.png";
-import image8 from "./images/llama.jpg";
-import image9 from "./images/owl.png";
-import image10 from "./images/van.jpg";
 import FeedbackComponent from "./FeedbackComponent";
 import handleComparison from "./Comparison_req";
-import { playClickSound,playGenerationStartSound,playSuccessSound,createCheerSound,createVictorySound,createClickSound,createGenerationStartSound } from "./Sound_Generation";
-import { speakFeedback, stopSpeech, getSpeechStatus, testSpeech } from "../utils/speechSynthesis";
+import { playClickSound, playGenerationStartSound } from "./Sound_Generation";
+import voiceManager from "../utils/voiceManager";
 
 const shapes = [
   { type: "circle", left: "10%", rope: "rope-1", image: image1, name: "Car" },
@@ -26,7 +20,7 @@ const shapes = [
   { type: "triangle", left: "40%", rope: "rope-3", image: image3, name: "Mountain" },
   { type: "diamond", left: "55%", rope: "rope-4", image: image4, name: "Owl" },
   { type: "hexagon", left: "70%", rope: "rope-5", image: image5, name: "Sheep" },
-  { type: "star", left: "85%", rope: "rope-6", image: image6, name: "Car (PNG)" },
+  { type: "star", left: "85%", rope: "rope-6", image: image1, name: "Car (Duplicate)" },
 ];
 
 
@@ -35,14 +29,13 @@ export default function HangingShapes() {
   const [AIGeneratedimg, setAIGeneratedimg] = useState(null);
   const [prompt, setPrompt] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
-  const [showSoundWave, setShowSoundWave] = useState(false);
   const [isComparing, setIsComparing] = useState(false);
   const [comparisonResult, setComparisonResult] = useState(null);
   const [result, setResult] = useState(null)
   const [selectedModel, setSelectedModel] = useState("pollinations");
   const [hasComparedCurrentGeneration, setHasComparedCurrentGeneration] = useState(false); // Flag to prevent multiple comparisons
-  const [speechEnabled, setSpeechEnabled] = useState(true); // Speech feedback preference
-  const [isSpeaking, setIsSpeaking] = useState(false); // Speech status
+  const [voiceEnabled, setVoiceEnabled] = useState(true); // Voice feedback preference
+  const [isVoicePlaying, setIsVoicePlaying] = useState(false); // Voice status
   const [isImageLoading, setIsImageLoading] = useState(false); // Image loading status
   const [unlockedShapes, setUnlockedShapes] = useState(() => {
     // For testing - uncomment the next line to reset progress
@@ -80,12 +73,12 @@ export default function HangingShapes() {
     console.log("🔍 AIGeneratedimg state changed:", AIGeneratedimg);
   }, [AIGeneratedimg]);
 
-  // Cleanup: Stop speech when component unmounts
+  // Cleanup: Stop voice when component unmounts
   useEffect(() => {
     return () => {
-      if (isSpeaking) {
-        stopSpeech();
-        console.log("🎤 Speech stopped on component unmount");
+      if (isVoicePlaying) {
+        voiceManager.stopCurrentAudio();
+        console.log("🎵 Voice stopped on component unmount");
       }
       // Cleanup blob URLs to prevent memory leaks
       if (AIGeneratedimg && AIGeneratedimg.startsWith('blob:')) {
@@ -93,14 +86,37 @@ export default function HangingShapes() {
         console.log("🧙 Cleaned up blob URL on unmount");
       }
     };
-  }, [isSpeaking, AIGeneratedimg]);
+  }, [isVoicePlaying, AIGeneratedimg]);
+
+  // Startup voice - play welcome/startup voice when app loads
+  useEffect(() => {
+    const hasPlayedStartup = sessionStorage.getItem('hasPlayedStartupVoice');
+    
+    if (!hasPlayedStartup && voiceEnabled) {
+      // Delay startup voice to ensure component is fully loaded
+      const timer = setTimeout(async () => {
+        try {
+          setIsVoicePlaying(true);
+          await voiceManager.playStartupVoice();
+          console.log("🎵 Startup voice played successfully");
+          sessionStorage.setItem('hasPlayedStartupVoice', 'true');
+        } catch (error) {
+          console.warn("🎵 Startup voice failed:", error);
+        } finally {
+          setIsVoicePlaying(false);
+        }
+      }, 1500); // Wait 1.5 seconds after component mount
+      
+      return () => clearTimeout(timer);
+    }
+  }, []); // Only run once on mount
 
   const handleShapeClick = (image, index) => {
     if (unlockedShapes.includes(index)) {
-      // Stop any ongoing speech
-      if (isSpeaking) {
-        stopSpeech();
-        setIsSpeaking(false);
+      // Stop any ongoing voice
+      if (isVoicePlaying) {
+        voiceManager.stopCurrentAudio();
+        setIsVoicePlaying(false);
       }
       
       setSelectedImage(image); // Set the target image
@@ -384,12 +400,12 @@ const canStartGeneration = (prompt, isGenerating) => {
   return true;
 };
 
-// Helper function to stop ongoing speech and cleanup
-const stopOngoingSpeech = (isSpeaking, stopSpeech, setIsSpeaking) => {
-  if (isSpeaking) {
-    stopSpeech();
-    setIsSpeaking(false);
-    console.log("🎤 Stopped speech for new generation");
+// Helper function to stop ongoing voice and cleanup
+const stopOngoingVoice = (isVoicePlaying, voiceManager, setIsVoicePlaying) => {
+  if (isVoicePlaying) {
+    voiceManager.stopCurrentAudio();
+    setIsVoicePlaying(false);
+    console.log("🎵 Stopped voice for new generation");
   }
 };
 
@@ -419,12 +435,29 @@ const resetGenerationState = (setters) => {
   setHasComparedCurrentGeneration(false);
 };
 
-// Helper function to play generation sound safely
-const playGenerationSoundSafely = (playGenerationStartSound) => {
+// Helper function to play generation sound and voice safely
+const playGenerationSoundAndVoice = async (playGenerationStartSound, voiceManager, voiceEnabled, setIsVoicePlaying) => {
   try {
+    // Play the synthetic sound effect
     playGenerationStartSound();
+    
+    // Play generating voice if voice is enabled
+    if (voiceEnabled) {
+      setIsVoicePlaying(true);
+      setTimeout(async () => {
+        try {
+          await voiceManager.playGeneratingVoice();
+          console.log("🎵 Generating voice played successfully");
+        } catch (error) {
+          console.warn("🎵 Generating voice failed:", error);
+        } finally {
+          setIsVoicePlaying(false);
+        }
+      }, 500); // Small delay to let sound effect start first
+    }
   } catch (error) {
-    console.warn("Sound generation failed:", error);
+    console.warn('Generation sound/voice failed:', error);
+    setIsVoicePlaying(false);
   }
 };
 
@@ -448,7 +481,7 @@ const generateImageByModel = async (selectedModel, prompt, generate_img, generat
 // Helper function to handle image loading and comparison
 const handleImageLoadingAndComparison = (imageUrl, setters, comparisonParams) => {
   const { setAIGeneratedimg, setIsImageLoading, setHasComparedCurrentGeneration } = setters;
-  const { selectedImage, handleComparison, setIsComparing, setResult, speechEnabled, speakFeedback } = comparisonParams;
+  const { selectedImage, handleComparison, setIsComparing, setResult, voiceEnabled, voiceManager, setIsVoicePlaying } = comparisonParams;
   
   console.log("✅ Image generation successful - displaying immediately");
   setAIGeneratedimg(imageUrl);
@@ -467,7 +500,7 @@ const handleImageLoadingAndComparison = (imageUrl, setters, comparisonParams) =>
 
 // Helper function to handle image comparison flow
 const handleImageComparisonFlow = (imageUrl, setIsImageLoading, comparisonParams) => {
-  const { selectedImage, handleComparison, setIsComparing, setResult, speechEnabled, speakFeedback } = comparisonParams;
+  const { selectedImage, handleComparison, setIsComparing, setResult, voiceEnabled, voiceManager, setIsVoicePlaying, shapes, unlockedShapes, setUnlockedShapes, setShowUnlockNotification } = comparisonParams;
   
   console.log("🔄 Waiting for image to load before comparison...");
   
@@ -475,7 +508,7 @@ const handleImageComparisonFlow = (imageUrl, setIsImageLoading, comparisonParams
   img.onload = async () => {
     console.log("🖼️ Image fully loaded, starting comparison...");
     setIsImageLoading(false);
-    await performComparison(imageUrl, selectedImage, handleComparison, setIsComparing, setResult, speechEnabled, speakFeedback);
+    await performComparison(imageUrl, selectedImage, handleComparison, setIsComparing, setResult, voiceEnabled, voiceManager, setIsVoicePlaying, shapes, unlockedShapes, setUnlockedShapes, setShowUnlockNotification);
   };
   
   img.onerror = () => {
@@ -489,7 +522,7 @@ const handleImageComparisonFlow = (imageUrl, setIsImageLoading, comparisonParams
 };
 
 // Helper function to perform the actual comparison
-const performComparison = async (imageUrl, selectedImage, handleComparison, setIsComparing, setResult, speechEnabled, speakFeedback) => {
+const performComparison = async (imageUrl, selectedImage, handleComparison, setIsComparing, setResult, voiceEnabled, voiceManager, setIsVoicePlaying, shapes, unlockedShapes, setUnlockedShapes, setShowUnlockNotification) => {
   try {
     setIsComparing(true);
     const comparisonResult = await handleComparison(imageUrl, selectedImage);
@@ -497,7 +530,7 @@ const performComparison = async (imageUrl, selectedImage, handleComparison, setI
     if (comparisonResult && comparisonResult.result) {
       console.log("✅ Comparison completed:", comparisonResult);
       setResult(comparisonResult);
-      handleSpeechFeedback(comparisonResult, speechEnabled, speakFeedback);
+      handleVoiceFeedback(comparisonResult, voiceEnabled, voiceManager, setIsVoicePlaying, selectedImage, shapes, unlockedShapes, setUnlockedShapes, setShowUnlockNotification);
     } else {
       console.warn("Comparison failed");
       setResult({ error: "Comparison failed", combined: 0 });
@@ -510,16 +543,55 @@ const performComparison = async (imageUrl, selectedImage, handleComparison, setI
   }
 };
 
-// Helper function to handle speech feedback
-const handleSpeechFeedback = (comparisonResult, speechEnabled, speakFeedback) => {
-  if (speechEnabled) {
-    const score = comparisonResult.result.combined || comparisonResult.combined || 0;
-    if (score > 0.7 || score > 70) {
-      try {
-        speakFeedback(comparisonResult);
-      } catch (error) {
-        console.warn("Speech failed:", error);
+// Helper function to handle voice feedback
+const handleVoiceFeedback = async (comparisonResult, voiceEnabled, voiceManager, setIsVoicePlaying, selectedImage, shapes, unlockedShapes, setUnlockedShapes, setShowUnlockNotification) => {
+  if (voiceEnabled) {
+    try {
+      setIsVoicePlaying(true);
+      
+      // Create challenge context for contextual voice selection
+      const currentChallengeIndex = shapes.findIndex(shape => shape.image === selectedImage);
+      const score = comparisonResult.result?.combined || comparisonResult.combined || 0;
+      const percentage = score > 1 ? Math.round(score) : Math.round(score * 100);
+      
+      // Determine if this will unlock next challenge
+      const nextChallengeIndex = currentChallengeIndex + 1;
+      const willUnlockNext = percentage >= 70 && 
+        nextChallengeIndex < shapes.length && 
+        !unlockedShapes.includes(nextChallengeIndex) && 
+        unlockedShapes.includes(currentChallengeIndex);
+      
+      const challengeContext = {
+        unlocksNext: willUnlockNext,
+        isLastChallenge: currentChallengeIndex === shapes.length - 1,
+        challengeIndex: currentChallengeIndex,
+        totalChallenges: shapes.length
+      };
+      
+      // Play contextual voice based on result
+      await voiceManager.playContextualVoice(comparisonResult, challengeContext);
+      
+      // Handle progression if success
+      if (percentage >= 70 && willUnlockNext) {
+        setTimeout(() => {
+          setUnlockedShapes(prev => {
+            const newUnlocked = [...prev, nextChallengeIndex];
+            console.log("New unlocked shapes:", newUnlocked);
+            return newUnlocked;
+          });
+          setShowUnlockNotification(true);
+          
+          // Hide notification after 3 seconds
+          setTimeout(() => {
+            setShowUnlockNotification(false);
+          }, 3000);
+        }, 2000); // Delay to let voice play first
       }
+      
+      setIsVoicePlaying(false);
+    } catch (error) {
+      console.warn("🎵 Voice feedback failed:", error);
+      setIsVoicePlaying(false);
     }
   }
 };
@@ -549,7 +621,7 @@ const handleGenerateClick = async () => {
   if (!canStartGeneration(prompt, isGenerating)) return;
   
   // Cleanup and preparation
-  stopOngoingSpeech(isSpeaking, stopSpeech, setIsSpeaking);
+  stopOngoingVoice(isVoicePlaying, voiceManager, setIsVoicePlaying);
   cleanupPreviousResources(AIGeneratedimg);
   
   // State management
@@ -562,22 +634,27 @@ const handleGenerateClick = async () => {
   };
   resetGenerationState(stateSetters);
   
-  // Sound feedback
-  playGenerationSoundSafely(playGenerationStartSound);
+  // Sound and voice feedback
+  playGenerationSoundAndVoice(playGenerationStartSound, voiceManager, voiceEnabled, setIsVoicePlaying);
   
   try {
     // Image generation
     const imageUrl = await generateImageByModel(selectedModel, prompt, generate_img, generateWithClipDrop);
     
     if (imageUrl) {
-      // Comparison parameters - removed hasComparedCurrentGeneration from params
+      // Comparison parameters - updated to use voice system
       const comparisonParams = {
         selectedImage,
         handleComparison,
         setIsComparing,
         setResult,
-        speechEnabled,
-        speakFeedback
+        voiceEnabled,
+        voiceManager,
+        setIsVoicePlaying,
+        shapes,
+        unlockedShapes,
+        setUnlockedShapes,
+        setShowUnlockNotification
       };
       
       handleImageLoadingAndComparison(imageUrl, stateSetters, comparisonParams);
@@ -623,44 +700,6 @@ const handleGenerateClick = async () => {
           </div>
         ))}
       </div>
-
-      {/* Sound Wave Effect */}
-      <AnimatePresence>
-        {showSoundWave && (
-          <motion.div 
-            className="sound-wave"
-            initial={{ opacity: 0, scale: 0.5 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.5 }}
-            transition={{ duration: 0.3 }}
-          >
-            <motion.div
-              style={{
-                position: 'absolute',
-                top: '60px',
-                left: '50%',
-                transform: 'translateX(-50%)',
-                background: 'rgba(255, 107, 107, 0.9)',
-                color: 'white',
-                padding: '10px 20px',
-                borderRadius: '25px',
-                fontSize: '1.2rem',
-                fontWeight: 'bold',
-                fontFamily: 'Poppins, sans-serif',
-                textAlign: 'center',
-                boxShadow: '0 4px 15px rgba(0, 0, 0, 0.3)',
-                backdropFilter: 'blur(10px)',
-                border: '2px solid rgba(255, 255, 255, 0.3)'
-              }}
-              initial={{ y: -20, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              transition={{ delay: 0.2, duration: 0.5 }}
-            >
-              🎉 Task Completed! 🎉
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       {/* Unlock Notification */}
       <AnimatePresence>
@@ -712,6 +751,11 @@ const handleGenerateClick = async () => {
             unlockedShapes={unlockedShapes} 
             shapes={shapes} 
             comparisonResult={comparisonResult}
+            voiceEnabled={voiceEnabled}
+            setVoiceEnabled={setVoiceEnabled}
+            isVoicePlaying={isVoicePlaying}
+            setIsVoicePlaying={setIsVoicePlaying}
+            voiceManager={voiceManager}
           />
         </div>
         <div className="main-content">
@@ -759,38 +803,6 @@ const handleGenerateClick = async () => {
                     ))}
                   </select>
                 </div>
-                
-                {/* Speech Control Toggle */}
-                {/* <motion.button
-                  onClick={() => {
-                    if (isSpeaking) {
-                      stopSpeech();
-                      setIsSpeaking(false);
-                    }
-                    setSpeechEnabled(!speechEnabled);
-                    console.log(`🎤 Speech feedback ${!speechEnabled ? 'enabled' : 'disabled'}`);
-                  }}
-                  className={`speech-toggle ${speechEnabled ? 'enabled' : 'disabled'}`}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  title={speechEnabled ? 'Disable voice feedback' : 'Enable voice feedback'}
-                  style={{
-                    padding: '8px 12px',
-                    borderRadius: '6px',
-                    border: 'none',
-                    backgroundColor: speechEnabled ? '#10b981' : '#6b7280',
-                    color: 'white',
-                    fontSize: '14px',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    transition: 'all 0.2s ease'
-                  }}
-                >
-                  <span>{speechEnabled ? '🎤' : '🅾️'}</span>
-                  <span>{isSpeaking ? 'Speaking...' : (speechEnabled ? 'Voice On' : 'Voice Off')}</span>
-                </motion.button> */}
                 
                 <motion.button 
                   onClick={handleGenerateClick} 
@@ -915,7 +927,7 @@ const handleGenerateClick = async () => {
                   >
                     Using MS-SSIM algorithm to compare<br/>
                     target vs generated image
-                    {speechEnabled && (
+                    {voiceEnabled && (
                       <motion.div
                         style={{ 
                           marginTop: '8px', 
