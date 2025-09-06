@@ -5,10 +5,10 @@ import { motion, AnimatePresence } from "framer-motion";
 // Helper functions
 const getQualityDescription = (percentage) => {
   if (percentage >= 80) return { emoji: "🎯", text: "Excellent", color: "#16a34a" };
-  if (percentage >= 60) return { emoji: "👍", text: "Good", color: "#65a30d" };
-  if (percentage >= 40) return { emoji: "🤔", text: "Fair", color: "#ca8a04" };
-  if (percentage >= 20) return { emoji: "👎", text: "Poor", color: "#ea580c" };
-  return { emoji: "❌", text: "Very Poor", color: "#dc2626" };
+  if (percentage >= 60) return { emoji: "🎉", text: "Great Match", color: "#10b981" }; // Auto-unlock threshold
+  if (percentage >= 40) return { emoji: "🔥", text: "Close", color: "#f59e0b" }; // Near success
+  if (percentage >= 20) return { emoji: "💪", text: "Keep Trying", color: "#ef4444" };
+  return { emoji: "🔄", text: "Try Again", color: "#dc2626" };
 };
 
 const formatDetailedScores = (scores) => {
@@ -299,7 +299,7 @@ const FeedbackComponent = React.memo(({ selectedImage, comparisonResult, isCompa
           </motion.div>
         )}
         
-        {/* Analysis insights */}
+        {/* Analysis insights with score-based recommendations */}
         <motion.div
           className="analysis-insights"
           initial={{ opacity: 0 }}
@@ -313,6 +313,59 @@ const FeedbackComponent = React.memo(({ selectedImage, comparisonResult, isCompa
               Colors: {parseInt(detailedScores["Colors"])}%
             </span>
           </div>
+          
+          {/* Score-based feedback messages */}
+          {matchLevel >= 60 && (
+            <motion.div
+              style={{
+                fontSize: '0.8rem',
+                color: '#10b981',
+                marginTop: '6px',
+                fontWeight: '600',
+                textAlign: 'center'
+              }}
+              initial={{ opacity: 0, y: 5 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 1.2 }}
+            >
+              🎉 Great match! Auto-progressing to next challenge...
+            </motion.div>
+          )}
+          
+          {matchLevel >= 40 && matchLevel < 60 && (
+            <motion.div
+              style={{
+                fontSize: '0.8rem',
+                color: '#f59e0b',
+                marginTop: '6px',
+                fontWeight: '600',
+                textAlign: 'center'
+              }}
+              initial={{ opacity: 0, y: 5 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 1.2 }}
+            >
+              🔥 Close! Try adjusting your prompt for 60%+ to unlock next level
+            </motion.div>
+          )}
+          
+          {matchLevel < 40 && (
+            <motion.div
+              style={{
+                fontSize: '0.8rem',
+                color: '#ef4444',
+                marginTop: '6px',
+                fontWeight: '600',
+                textAlign: 'center'
+              }}
+              initial={{ opacity: 0, y: 5 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 1.2 }}
+            >
+              💪 Keep trying! Consider different keywords or descriptions
+            </motion.div>
+          )}
+          
           <div className="method-indicator" style={{
             fontSize: '0.7rem',
             color: '#16a34a',

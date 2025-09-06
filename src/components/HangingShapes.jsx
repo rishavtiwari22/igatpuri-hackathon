@@ -36,13 +36,74 @@ export default function HangingShapes() {
   const [voiceEnabled, setVoiceEnabled] = useState(true); // Voice feedback preference
   const [isVoicePlaying, setIsVoicePlaying] = useState(false); // Voice status
   const [isImageLoading, setIsImageLoading] = useState(false); // Image loading status
+  // Enhanced progress tracking with scores and timestamps - INITIALIZE FIRST
+  const [progressData, setProgressData] = useState(() => {
+    // For testing - uncomment the next line to reset progress
+    // localStorage.removeItem("challengeProgress");
+    const savedData = localStorage.getItem("challengeProgress");
+    const initialProgress = savedData ? JSON.parse(savedData) : {};
+    console.log("🔄 Initializing progressData from localStorage:", Object.keys(initialProgress));
+    return initialProgress;
+  });
+
   const [unlockedShapes, setUnlockedShapes] = useState(() => {
     // For testing - uncomment the next line to reset progress
     // localStorage.removeItem("unlockedShapes");
-    const savedProgress = localStorage.getItem("unlockedShapes");
-    return savedProgress ? JSON.parse(savedProgress) : [0];
+    // localStorage.removeItem("challengeProgress");
+    
+    // Get both stored values
+    const savedProgress = localStorage.getItem("challengeProgress");
+    const savedUnlocked = localStorage.getItem("unlockedShapes");
+    
+    let reconstructedUnlocked = [0]; // Always start with first challenge unlocked
+    
+    if (savedProgress) {
+      const progressData = JSON.parse(savedProgress);
+      console.log("🔍 Reconstructing unlocked shapes from progress data:", progressData);
+      
+      // Reconstruct unlocked shapes from completed challenges
+      for (const [challengeIndex, data] of Object.entries(progressData)) {
+        const index = parseInt(challengeIndex);
+        if (data.completed && !reconstructedUnlocked.includes(index)) {
+          reconstructedUnlocked.push(index);
+          
+          // If this challenge is completed, also unlock the next one
+          const nextIndex = index + 1;
+          if (nextIndex < shapes.length && !reconstructedUnlocked.includes(nextIndex)) {
+            reconstructedUnlocked.push(nextIndex);
+            console.log(`✅ Challenge ${index} completed - unlocking next challenge ${nextIndex}`);
+          }
+        }
+      }
+      
+      // Sort the unlocked array
+      reconstructedUnlocked.sort((a, b) => a - b);
+      console.log("🔄 Reconstructed unlocked shapes from progress:", reconstructedUnlocked);
+    }
+    
+    // Use saved unlocked shapes if available, otherwise use reconstructed
+    let finalUnlocked = reconstructedUnlocked;
+    if (savedUnlocked) {
+      const parsedSaved = JSON.parse(savedUnlocked);
+      // Use whichever has more unlocked challenges (prevent regression)
+      if (parsedSaved.length > reconstructedUnlocked.length) {
+        finalUnlocked = parsedSaved;
+        console.log("🔄 Using saved unlocked shapes (had more progress):", finalUnlocked);
+      } else {
+        console.log("🔄 Using reconstructed unlocked shapes (more accurate):", finalUnlocked);
+      }
+    }
+    
+    console.log("🔄 Final initialized unlockedShapes:", finalUnlocked);
+    return finalUnlocked;
   });
   const [showUnlockNotification, setShowUnlockNotification] = useState(false);
+  const [unlockNotificationData, setUnlockNotificationData] = useState({
+    type: 'normal', // 'normal', 'auto', 'final'
+    score: 0,
+    challengeName: ''
+  });
+  const [isAutoProgressing, setIsAutoProgressing] = useState(false); // Auto-progression loading state
 
 
   // Available models for image generation
@@ -57,15 +118,56 @@ export default function HangingShapes() {
     console.log("Progress saved to localStorage:", unlockedShapes);
   }, [unlockedShapes]);
 
-  // Set initial target image to the first unlocked shape
+  // Save detailed progress data to localStorage whenever progressData changes
   useEffect(() => {
+    localStorage.setItem("challengeProgress", JSON.stringify(progressData));
+    console.log("Challenge progress data saved:", progressData);
+  }, [progressData]);
+
+  // Set initial target image to the first unlocked shape
+  // Fixed: Now properly depends on unlockedShapes to ensure restoration works
+  useEffect(() => {
+    console.log("🔄 Initial setup - unlockedShapes:", unlockedShapes);
+    
     if (unlockedShapes.length > 0) {
       const firstUnlockedIndex = unlockedShapes[0];
+      console.log("🎯 Setting initial target to first unlocked shape:", firstUnlockedIndex, shapes[firstUnlockedIndex]?.name);
+      
       if (shapes[firstUnlockedIndex]) {
         setSelectedImage(shapes[firstUnlockedIndex].image);
+        console.log("✅ Initial target image set to:", shapes[firstUnlockedIndex].name);
+      }
+    } else {
+      console.warn("⚠️ No unlocked shapes found during initialization");
+    }
+  }, [unlockedShapes]); // Fixed: Now depends on unlockedShapes
+
+  // Add localStorage restoration debugging and verification
+  useEffect(() => {
+    console.log("🔍 localStorage restoration check:");
+    console.log("  - unlockedShapes from state:", unlockedShapes);
+    console.log("  - progressData from state:", Object.keys(progressData));
+    
+    // Verify localStorage contents
+    const storedUnlocked = localStorage.getItem("unlockedShapes");
+    const storedProgress = localStorage.getItem("challengeProgress");
+    
+    console.log("  - localStorage unlockedShapes:", storedUnlocked);
+    console.log("  - localStorage challengeProgress:", storedProgress ? Object.keys(JSON.parse(storedProgress)) : "none");
+    
+    // Check for any mismatches
+    if (storedUnlocked) {
+      const parsedUnlocked = JSON.parse(storedUnlocked);
+      const mismatch = JSON.stringify(parsedUnlocked) !== JSON.stringify(unlockedShapes);
+      if (mismatch) {
+        console.warn("⚠️ MISMATCH: localStorage unlockedShapes doesn't match state!");
+        console.log("  - localStorage:", parsedUnlocked);
+        console.log("  - State:", unlockedShapes);
+      } else {
+        console.log("✅ localStorage and state unlockedShapes are synchronized");
       }
     }
-  }, []);
+  }, [unlockedShapes, progressData]);
 
   // Debug: Track AIGeneratedimg state changes
   useEffect(() => {
@@ -313,6 +415,67 @@ export default function HangingShapes() {
           }
           
           console.log('🔬 Comprehensive debug test completed');
+        },
+        
+        // NEW: Test auto-progression with different score ranges
+        testAutoProgression: async (mockScore) => {
+          console.log(`🧪 Testing auto-progression with mock score: ${mockScore}%`);
+          
+          if (!selectedImage) {
+            console.warn('⚠️ No selected image for progression test');
+            return;
+          }
+          
+          // Create mock comparison result
+          const mockResult = {
+            percentage: mockScore,
+            combined: mockScore / 100,
+            ms_ssim: mockScore / 100,
+            detailed_scores: {
+              structural: mockScore * 0.9,
+              edges: mockScore * 0.8,
+              colors: mockScore * 1.1,
+              hog_features: mockScore * 0.95,
+              histogram: mockScore * 0.85,
+              hsv_similarity: mockScore * 0.92
+            },
+            method: 'test_mock'
+          };
+          
+          console.log('🎭 Mock result created:', mockResult);
+          console.log('🎵 Testing voice feedback and progression...');
+          
+          // Test the progression logic
+          try {
+            await handleVoiceFeedback(
+              mockResult,
+              voiceEnabled,
+              voiceManager,
+              setIsVoicePlaying,
+              selectedImage,
+              shapes,
+              unlockedShapes,
+              setUnlockedShapes,
+              setShowUnlockNotification,
+              setSelectedImage,
+              AIGeneratedimg
+            );
+            
+            console.log('✅ Auto-progression test completed');
+          } catch (error) {
+            console.error('❌ Auto-progression test failed:', error);
+          }
+        },
+        
+        // NEW: Test reset progress functionality
+        testResetProgress: () => {
+          console.log('🧪 Testing reset progress functionality...');
+          console.log('Current state before reset:');
+          console.log('- Unlocked shapes:', unlockedShapes);
+          console.log('- Progress data keys:', Object.keys(progressData));
+          console.log('- Current selected image:', selectedImage ? 'Set' : 'None');
+          console.log('- Generated image:', AIGeneratedimg ? 'Set' : 'None');
+          console.log('🔄 You can now test the reset button in the UI');
         }
       };
       
@@ -321,6 +484,9 @@ export default function HangingShapes() {
       console.log('🧪 MS-SSIM testing: window.testVoices.testComparison()');
       console.log('🧪 Image loading test: window.testVoices.testImageLoading()');
       console.log('🔬 Full debug test: window.testVoices.fullDebugTest()');
+      console.log('🎯 Auto-progression test: window.testVoices.testAutoProgression(65) // Test with 65% score');
+      console.log('🔄 Reset progress test: window.testVoices.testResetProgress() // Check current state');
+      console.log('   - Try: testAutoProgression(75) for success, testAutoProgression(50) for near-success, testAutoProgression(30) for retry');
     }
   }, [selectedImage, AIGeneratedimg]);
 
@@ -332,16 +498,108 @@ export default function HangingShapes() {
         setIsVoicePlaying(false);
       }
       
+      const shape = shapes[index];
       setSelectedImage(image); // Set the target image
-      setResult(null); // Clear previous comparison when selecting new target
-      setResult(null); // Clear previous results
       setHasComparedCurrentGeneration(false); // Reset comparison flag for new target
       playClickSound(); // Play click sound when shape is successfully clicked
       
-      console.log(`🎯 Shape ${shapes[index].name} clicked! Setting target image:`, image);
-      console.log("📊 Target image set. Generate an image to start comparison.");
+      // Restore stored generated image and comparison result if available
+      const storedProgress = progressData[index];
+      if (storedProgress && storedProgress.generatedImage) {
+        console.log(`🖼️ Restoring generated image for ${shape.name}:`, storedProgress.generatedImage);
+        setAIGeneratedimg(storedProgress.generatedImage);
+        
+        // Also restore the comparison result/feedback if available
+        if (storedProgress.lastComparisonResult) {
+          console.log(`📊 Restoring comparison result for ${shape.name}:`, storedProgress.lastComparisonResult);
+          setResult(storedProgress.lastComparisonResult);
+          // Set flag to indicate this generation has been compared
+          setHasComparedCurrentGeneration(true);
+        } else {
+          // Clear result if no stored comparison result
+          setResult(null);
+        }
+      } else {
+        // Clear generated image and result for clean slate
+        setAIGeneratedimg(null);
+        setResult(null);
+      }
+      setPrompt("");
+      
+      console.log(`🎯 Hanging shape ${shape.name} clicked! Setting target image:`, image);
+      console.log(`📊 Challenge switched to: ${shape.name}.`);
+      
+      // Show progress data if available
+      if (progressData[index]) {
+        const data = progressData[index];
+        console.log(`📈 Progress for ${shape.name}:`, {
+          bestScore: `${data.bestScore.toFixed(1)}%`,
+          attempts: data.attempts,
+          completed: data.completed,
+          lastAttempt: new Date(data.lastAttemptAt).toLocaleString(),
+          hasStoredImage: !!data.generatedImage,
+          hasStoredResult: !!data.lastComparisonResult
+        });
+      }
     } else {
       console.log("Shape is locked");
+    }
+  };
+
+  // Handle shape navigation from progress tracker
+  const handleProgressShapeClick = (index) => {
+    if (unlockedShapes.includes(index)) {
+      // Stop any ongoing voice
+      if (isVoicePlaying) {
+        voiceManager.stopCurrentAudio();
+        setIsVoicePlaying(false);
+      }
+      
+      const shape = shapes[index];
+      setSelectedImage(shape.image);
+      setHasComparedCurrentGeneration(false);
+      playClickSound();
+      
+      // Restore stored generated image and comparison result if available
+      const storedProgress = progressData[index];
+      if (storedProgress && storedProgress.generatedImage) {
+        console.log(`🖼️ Restoring generated image for ${shape.name}:`, storedProgress.generatedImage);
+        setAIGeneratedimg(storedProgress.generatedImage);
+        
+        // Also restore the comparison result/feedback if available
+        if (storedProgress.lastComparisonResult) {
+          console.log(`📊 Restoring comparison result for ${shape.name}:`, storedProgress.lastComparisonResult);
+          setResult(storedProgress.lastComparisonResult);
+          // Set flag to indicate this generation has been compared
+          setHasComparedCurrentGeneration(true);
+        } else {
+          // Clear result if no stored comparison result
+          setResult(null);
+        }
+      } else {
+        // Clear generated image and result for clean slate
+        setAIGeneratedimg(null);
+        setResult(null);
+      }
+      setPrompt("");
+      
+      console.log(`🎯 Progress shape ${shape.name} (${index}) clicked! Navigating to challenge:`, shape.image);
+      console.log(`📊 Challenge switched to: ${shape.name}.`);
+      
+      // Show progress data if available
+      if (progressData[index]) {
+        const data = progressData[index];
+        console.log(`📈 Progress for ${shape.name}:`, {
+          bestScore: `${data.bestScore.toFixed(1)}%`,
+          attempts: data.attempts,
+          completed: data.completed,
+          lastAttempt: new Date(data.lastAttemptAt).toLocaleString(),
+          hasStoredImage: !!data.generatedImage,
+          hasStoredResult: !!data.lastComparisonResult
+        });
+      }
+    } else {
+      console.log(`🔒 Shape ${shapes[index].name} is locked`);
     }
   };
 
@@ -607,7 +865,7 @@ const handleImageLoadingAndComparison = (imageUrl, setters, comparisonParams) =>
 
 // Helper function to handle image comparison flow
 const handleImageComparisonFlow = (imageUrl, setIsImageLoading, comparisonParams) => {
-  const { selectedImage, handleComparison, setIsComparing, setResult, voiceEnabled, voiceManager, setIsVoicePlaying, shapes, unlockedShapes, setUnlockedShapes, setShowUnlockNotification } = comparisonParams;
+  const { selectedImage, handleComparison, setIsComparing, setResult, voiceEnabled, voiceManager, setIsVoicePlaying, shapes, unlockedShapes, setUnlockedShapes, setShowUnlockNotification, setSelectedImage: setSelectedImageFunc, setProgressData, setPrompt, setAIGeneratedimg, setHasComparedCurrentGeneration, setIsAutoProgressing, setUnlockNotificationData } = comparisonParams;
   
   console.log("🔄 Waiting for image to load before comparison...");
   
@@ -615,7 +873,7 @@ const handleImageComparisonFlow = (imageUrl, setIsImageLoading, comparisonParams
   img.onload = async () => {
     console.log("🖼️ Image fully loaded, starting comparison...");
     setIsImageLoading(false);
-    await performComparison(imageUrl, selectedImage, handleComparison, setIsComparing, setResult, voiceEnabled, voiceManager, setIsVoicePlaying, shapes, unlockedShapes, setUnlockedShapes, setShowUnlockNotification);
+    await performComparison(imageUrl, selectedImage, handleComparison, setIsComparing, setResult, voiceEnabled, voiceManager, setIsVoicePlaying, shapes, unlockedShapes, setUnlockedShapes, setShowUnlockNotification, setSelectedImageFunc, setProgressData, setPrompt, setAIGeneratedimg, setHasComparedCurrentGeneration, setIsAutoProgressing, setUnlockNotificationData);
   };
   
   img.onerror = () => {
@@ -630,7 +888,7 @@ const handleImageComparisonFlow = (imageUrl, setIsImageLoading, comparisonParams
 };
 
 // Helper function to perform the actual comparison
-const performComparison = async (imageUrl, selectedImage, handleComparison, setIsComparing, setResult, voiceEnabled, voiceManager, setIsVoicePlaying, shapes, unlockedShapes, setUnlockedShapes, setShowUnlockNotification) => {
+const performComparison = async (imageUrl, selectedImage, handleComparison, setIsComparing, setResult, voiceEnabled, voiceManager, setIsVoicePlaying, shapes, unlockedShapes, setUnlockedShapes, setShowUnlockNotification, setSelectedImageFunc, setProgressData, setPrompt, setAIGeneratedimg, setHasComparedCurrentGeneration, setIsAutoProgressing, setUnlockNotificationData) => {
   try {
     setIsComparing(true);
     const comparisonResult = await handleComparison(imageUrl, selectedImage);
@@ -638,6 +896,27 @@ const performComparison = async (imageUrl, selectedImage, handleComparison, setI
     console.log("🔍 Raw comparison result:", comparisonResult);
     console.log("🔍 Comparison result type:", typeof comparisonResult);
     console.log("🔍 Comparison result keys:", Object.keys(comparisonResult || {}));
+    
+    // Save progress data for ALL attempts (not just successful auto-progression)
+    const currentChallengeIndex = shapes.findIndex(shape => shape.image === selectedImage);
+    const saveProgressData = (challengeIndex, percentage, generatedImageUrl = null, comparisonResultData = null) => {
+      setProgressData(prev => ({
+        ...prev,
+        [challengeIndex]: {
+          challengeName: shapes[challengeIndex].name,
+          bestScore: Math.max(prev[challengeIndex]?.bestScore || 0, percentage),
+          latestScore: percentage,
+          attempts: (prev[challengeIndex]?.attempts || 0) + 1,
+          completed: percentage >= 60,
+          firstCompletedAt: prev[challengeIndex]?.firstCompletedAt || (percentage >= 60 ? new Date().toISOString() : null),
+          lastAttemptAt: new Date().toISOString(),
+          // Store the generated image URL (keep the best performing one or latest)
+          generatedImage: generatedImageUrl || prev[challengeIndex]?.generatedImage,
+          // Store the full comparison result for restoring feedback
+          lastComparisonResult: comparisonResultData || prev[challengeIndex]?.lastComparisonResult
+        }
+      }));
+    };
     
     // More robust validation for MS-SSIM result structure
     if (comparisonResult) {
@@ -675,10 +954,22 @@ const performComparison = async (imageUrl, selectedImage, handleComparison, setI
           percentage: comparisonResult.percentage || (comparisonResult.combined * 100) || (comparisonResult.ms_ssim * 100) || 0
         };
         
+        // Save progress data for this attempt with generated image
+        if (currentChallengeIndex >= 0) {
+          // Store the generated image URL when saving progress
+          const currentGeneratedImage = imageUrl || AIGeneratedimg;
+          saveProgressData(currentChallengeIndex, normalizedResult.percentage, currentGeneratedImage, normalizedResult);
+        }
+        
         console.log("✅ Comparison completed successfully:", normalizedResult);
         console.log("🎯 Setting result state with:", normalizedResult);
         setResult(normalizedResult);
-        handleVoiceFeedback(normalizedResult, voiceEnabled, voiceManager, setIsVoicePlaying, selectedImage, shapes, unlockedShapes, setUnlockedShapes, setShowUnlockNotification);
+        
+        // Check for auto-progression FIRST (regardless of voice)
+        await handleAutoProgression(normalizedResult, currentChallengeIndex, shapes, unlockedShapes, setUnlockedShapes, setShowUnlockNotification, setSelectedImageFunc, setPrompt, setResult, setAIGeneratedimg, setHasComparedCurrentGeneration, setIsAutoProgressing, setUnlockNotificationData);
+        
+        // Then handle voice feedback
+        handleVoiceFeedback(normalizedResult, voiceEnabled, voiceManager, setIsVoicePlaying, selectedImage, shapes, unlockedShapes, setUnlockedShapes, setShowUnlockNotification, setSelectedImageFunc, AIGeneratedimg);
       } else {
         console.warn("❌ Comparison result missing valid score:", comparisonResult);
         const errorMessage = "Invalid comparison result - no valid score found";
@@ -696,8 +987,69 @@ const performComparison = async (imageUrl, selectedImage, handleComparison, setI
   }
 };
 
-// Helper function to handle voice feedback
-const handleVoiceFeedback = async (comparisonResult, voiceEnabled, voiceManager, setIsVoicePlaying, selectedImage, shapes, unlockedShapes, setUnlockedShapes, setShowUnlockNotification) => {
+// NEW: Simplified auto-progression function that works independently of voice
+const handleAutoProgression = async (comparisonResult, currentChallengeIndex, shapes, unlockedShapes, setUnlockedShapes, setShowUnlockNotification, setSelectedImage, setPrompt, setResult, setAIGeneratedimg, setHasComparedCurrentGeneration, setIsAutoProgressing, setUnlockNotificationData) => {
+  const percentage = comparisonResult.percentage || 0;
+  const nextChallengeIndex = currentChallengeIndex + 1;
+  const hasNextChallenge = nextChallengeIndex < shapes.length;
+  const isCurrentUnlocked = unlockedShapes.includes(currentChallengeIndex);
+  const isNextAlreadyUnlocked = unlockedShapes.includes(nextChallengeIndex);
+  
+  console.log(`🔍 Auto-progression check: Score ${percentage}%, Current: ${currentChallengeIndex}, Next: ${nextChallengeIndex}, Has next: ${hasNextChallenge}, Next unlocked: ${isNextAlreadyUnlocked}`);
+  
+  // AUTO-UNLOCK: Score >= 60% - Immediately unlock next challenge
+  if (percentage >= 60 && hasNextChallenge && isCurrentUnlocked && !isNextAlreadyUnlocked) {
+    console.log(`🎉 AUTO-UNLOCK TRIGGERED! Score ${percentage.toFixed(1)}% >= 60% - Processing unlock...`);
+    
+    // Step 1: Unlock the next challenge immediately
+    setUnlockedShapes(prev => {
+      const newUnlocked = [...prev, nextChallengeIndex];
+      console.log("✅ Unlocked shapes updated:", newUnlocked);
+      return newUnlocked;
+    });
+    
+    // Step 2: Show notification
+    setUnlockNotificationData({
+      type: 'auto',
+      score: percentage,
+      challengeName: shapes[nextChallengeIndex].name
+    });
+    setShowUnlockNotification(true);
+    
+    console.log(`🔓 Challenge "${shapes[nextChallengeIndex].name}" unlocked! Notification shown.`);
+    
+    // Step 3: Auto-progress after 3 seconds
+    setTimeout(() => {
+      console.log(`🎯 Starting auto-progression to: ${shapes[nextChallengeIndex].name}`);
+      
+      // Switch to next challenge
+      setSelectedImage(shapes[nextChallengeIndex].image);
+      
+      // Clear state for fresh start
+      setPrompt("");
+      setResult(null);
+      setAIGeneratedimg(null);
+      setHasComparedCurrentGeneration(false);
+      
+      console.log(`✅ Auto-progressed to challenge: ${shapes[nextChallengeIndex].name}`);
+      console.log(`🎯 Target image set to:`, shapes[nextChallengeIndex].image);
+      
+      // Hide notification
+      setShowUnlockNotification(false);
+      
+    }, 3000); // 3 second delay for auto-progression
+    
+  } else if (percentage >= 60 && !hasNextChallenge) {
+    console.log(`🏆 FINAL CHALLENGE COMPLETED! Score ${percentage.toFixed(1)}% - No more challenges`);
+  } else if (percentage >= 60 && isNextAlreadyUnlocked) {
+    console.log(`✅ Great score ${percentage.toFixed(1)}% but next challenge already unlocked`);
+  } else {
+    console.log(`📊 Score ${percentage.toFixed(1)}% - Need 60%+ to unlock next challenge`);
+  }
+};
+
+// Helper function to handle voice feedback and automatic progression
+const handleVoiceFeedback = async (comparisonResult, voiceEnabled, voiceManager, setIsVoicePlaying, selectedImage, shapes, unlockedShapes, setUnlockedShapes, setShowUnlockNotification, setSelectedImage, AIGeneratedimg) => {
   if (voiceEnabled) {
     try {
       setIsVoicePlaying(true);
@@ -709,24 +1061,146 @@ const handleVoiceFeedback = async (comparisonResult, voiceEnabled, voiceManager,
       const score = comparisonResult.combined || comparisonResult.percentage / 100 || 0;
       const percentage = comparisonResult.percentage || score * 100 || 0;
       
-      console.log(`🎵 Playing contextual voice for ${percentage.toFixed(1)}% similarity with alternation...`);
-      
-      // Determine if this will unlock next challenge
-      const nextChallengeIndex = currentChallengeIndex + 1;
-      const willUnlockNext = percentage >= 70 && 
-        nextChallengeIndex < shapes.length && 
-        !unlockedShapes.includes(nextChallengeIndex) && 
-        unlockedShapes.includes(currentChallengeIndex);
-      
-      const challengeContext = {
-        unlocksNext: willUnlockNext,
-        isLastChallenge: currentChallengeIndex === shapes.length - 1,
-        challengeIndex: currentChallengeIndex,
-        totalChallenges: shapes.length
+      // Save challenge progress data
+      const saveProgressData = (challengeIndex, score, percentage, generatedImageUrl = null, comparisonResultData = null) => {
+        setProgressData(prev => ({
+          ...prev,
+          [challengeIndex]: {
+            challengeName: shapes[challengeIndex].name,
+            bestScore: Math.max(prev[challengeIndex]?.bestScore || 0, percentage),
+            latestScore: percentage,
+            attempts: (prev[challengeIndex]?.attempts || 0) + 1,
+            completed: percentage >= 60,
+            firstCompletedAt: prev[challengeIndex]?.firstCompletedAt || (percentage >= 60 ? new Date().toISOString() : null),
+            lastAttemptAt: new Date().toISOString(),
+            // Store the generated image URL (keep the best performing one or latest)
+            generatedImage: generatedImageUrl || prev[challengeIndex]?.generatedImage,
+            // Store the full comparison result for restoring feedback
+            lastComparisonResult: comparisonResultData || prev[challengeIndex]?.lastComparisonResult
+          }
+        }));
       };
       
-      // Play contextual voice based on result
-      await voiceManager.playContextualVoice(comparisonResult, challengeContext);
+      // Save progress for current challenge
+      saveProgressData(currentChallengeIndex, score, percentage, AIGeneratedimg, comparisonResult);
+      
+      console.log(`🎵 Playing contextual voice for ${percentage.toFixed(1)}% similarity with alternation...`);
+      
+      // Determine progression logic
+      const nextChallengeIndex = currentChallengeIndex + 1;
+      const hasNextChallenge = nextChallengeIndex < shapes.length;
+      const isCurrentUnlocked = unlockedShapes.includes(currentChallengeIndex);
+      const isNextAlreadyUnlocked = unlockedShapes.includes(nextChallengeIndex);
+      
+      // SUCCESS: Score >= 60% - Auto unlock and progress
+      if (percentage >= 60 && hasNextChallenge && isCurrentUnlocked && !isNextAlreadyUnlocked) {
+        console.log(`🎉 SUCCESS! Score ${percentage.toFixed(1)}% >= 60% - Auto-unlocking next challenge`);
+        
+        const challengeContext = {
+          unlocksNext: true,
+          isLastChallenge: nextChallengeIndex === shapes.length - 1,
+          challengeIndex: currentChallengeIndex,
+          totalChallenges: shapes.length,
+          autoProgression: true,
+          successScore: percentage
+        };
+        
+        // Play success/unlock voice
+        await voiceManager.playContextualVoice(comparisonResult, challengeContext);
+        
+        // Auto-unlock next challenge after voice
+        setTimeout(() => {
+          console.log(`🔓 Auto-unlocking challenge ${nextChallengeIndex + 1}: ${shapes[nextChallengeIndex].name}`);
+          
+          setIsAutoProgressing(true); // Start auto-progression loading
+          
+          setUnlockedShapes(prev => {
+            const newUnlocked = [...prev, nextChallengeIndex];
+            console.log("✅ New unlocked shapes:", newUnlocked);
+            return newUnlocked;
+          });
+          
+          // Show enhanced unlock notification with score and auto-progression info
+          setUnlockNotificationData({
+            type: 'auto',
+            score: percentage,
+            challengeName: shapes[nextChallengeIndex].name
+          });
+          setShowUnlockNotification(true);
+          setTimeout(() => setShowUnlockNotification(false), 4000);
+          
+          // Auto-select next challenge after a brief delay
+          setTimeout(() => {
+            console.log(`🎯 Auto-selecting next challenge: ${shapes[nextChallengeIndex].name}`);
+            setSelectedImage(shapes[nextChallengeIndex].image);
+            
+            // Clear prompt field for fresh start on new challenge
+            setPrompt("");
+            
+            // Clear any previous results and generated images for clean slate
+            setResult(null);
+            setAIGeneratedimg(null);
+            setHasComparedCurrentGeneration(false);
+            
+            console.log(`🧹 Cleared prompt and results for fresh start on ${shapes[nextChallengeIndex].name}`);
+            
+            setIsAutoProgressing(false); // End auto-progression loading
+            
+            // Play welcome voice for new challenge
+            setTimeout(async () => {
+              try {
+                setIsVoicePlaying(true);
+                console.log('🎵 Playing welcome voice for new challenge...');
+                await voiceManager.playWelcomeVoice();
+                setIsVoicePlaying(false);
+              } catch (error) {
+                console.warn('Welcome voice failed:', error);
+                setIsVoicePlaying(false);
+              }
+            }, 500);
+            
+          }, 2000);
+        }, 2500);
+        
+      } 
+      // NEAR SUCCESS: Score 40-59% - Motivational feedback
+      else if (percentage >= 40 && percentage < 60) {
+        console.log(`🔥 NEAR SUCCESS! Score ${percentage.toFixed(1)}% (40-59%) - Playing motivation`);
+        
+        const challengeContext = {
+          unlocksNext: false,
+          isLastChallenge: currentChallengeIndex === shapes.length - 1,
+          challengeIndex: currentChallengeIndex,
+          totalChallenges: shapes.length,
+          needsImprovement: true,
+          score: percentage,
+          encouragement: true
+        };
+        
+        await voiceManager.playNearSuccessVoice();
+        console.log('🎵 Near success voice played - user encouraged to try again');
+        
+      }
+      // LOW SCORE: Score < 40% - Motivational retry feedback  
+      else if (percentage < 40) {
+        console.log(`🔄 LOW SCORE! Score ${percentage.toFixed(1)}% < 40% - Playing retry motivation`);
+        
+        await voiceManager.playMotivationVoice();
+        console.log('🎵 Motivation voice played - encouraging user to try different approach');
+        
+      }
+      // ALREADY AT FINAL CHALLENGE or ALREADY UNLOCKED
+      else if (!hasNextChallenge || isNextAlreadyUnlocked) {
+        if (!hasNextChallenge && percentage >= 60) {
+          console.log(`🏆 FINAL CHALLENGE COMPLETED! Score ${percentage.toFixed(1)}% - Playing final celebration`);
+          await voiceManager.playFinalCelebrationVoice();
+        } else {
+          console.log(`✅ Challenge completed (already unlocked or final) - Playing success voice`);
+          await voiceManager.playSuccessVoice();
+        }
+      }
+      
+      setIsVoicePlaying(false);
       
       // Log voice status after contextual voice
       const status = voiceManager.getVoiceAlternationStatus();
@@ -737,27 +1211,77 @@ const handleVoiceFeedback = async (comparisonResult, voiceEnabled, voiceManager,
         unlock: status.unlock
       });
       
-      // Handle progression if success
-      if (percentage >= 70 && willUnlockNext) {
-        setTimeout(() => {
-          setUnlockedShapes(prev => {
-            const newUnlocked = [...prev, nextChallengeIndex];
-            console.log("New unlocked shapes:", newUnlocked);
-            return newUnlocked;
-          });
-          setShowUnlockNotification(true);
-          
-          // Hide notification after 3 seconds
-          setTimeout(() => {
-            setShowUnlockNotification(false);
-          }, 3000);
-        }, 2000); // Delay to let voice play first
-      }
-      
-      setIsVoicePlaying(false);
     } catch (error) {
       console.warn("🎵 Voice feedback failed:", error);
       setIsVoicePlaying(false);
+    }
+  } else {
+    // Handle progression without voice
+    const currentChallengeIndex = shapes.findIndex(shape => shape.image === selectedImage);
+    const score = comparisonResult.combined || comparisonResult.percentage / 100 || 0;
+    const percentage = comparisonResult.percentage || score * 100 || 0;
+    const nextChallengeIndex = currentChallengeIndex + 1;
+    const hasNextChallenge = nextChallengeIndex < shapes.length;
+    const isCurrentUnlocked = unlockedShapes.includes(currentChallengeIndex);
+    const isNextAlreadyUnlocked = unlockedShapes.includes(nextChallengeIndex);
+    
+    // Auto-progression even without voice
+    if (percentage >= 60 && hasNextChallenge && isCurrentUnlocked && !isNextAlreadyUnlocked) {
+      console.log(`🎉 Silent auto-progression: Score ${percentage.toFixed(1)}% >= 60%`);
+      
+      // Save progress data for silent mode too
+      const saveProgressData = (challengeIndex, score, percentage, generatedImageUrl = null, comparisonResultData = null) => {
+        setProgressData(prev => ({
+          ...prev,
+          [challengeIndex]: {
+            challengeName: shapes[challengeIndex].name,
+            bestScore: Math.max(prev[challengeIndex]?.bestScore || 0, percentage),
+            latestScore: percentage,
+            attempts: (prev[challengeIndex]?.attempts || 0) + 1,
+            completed: percentage >= 60,
+            firstCompletedAt: prev[challengeIndex]?.firstCompletedAt || (percentage >= 60 ? new Date().toISOString() : null),
+            lastAttemptAt: new Date().toISOString(),
+            // Store the generated image URL (keep the best performing one or latest)
+            generatedImage: generatedImageUrl || prev[challengeIndex]?.generatedImage,
+            // Store the full comparison result for restoring feedback
+            lastComparisonResult: comparisonResultData || prev[challengeIndex]?.lastComparisonResult
+          }
+        }));
+      };
+      
+      // Save progress for current challenge
+      saveProgressData(currentChallengeIndex, score, percentage, AIGeneratedimg, comparisonResult);
+      
+      setTimeout(() => {
+        setUnlockedShapes(prev => [...prev, nextChallengeIndex]);
+        setUnlockNotificationData({
+          type: 'auto',
+          score: percentage,
+          challengeName: shapes[nextChallengeIndex].name
+        });
+        setShowUnlockNotification(true);
+        setTimeout(() => setShowUnlockNotification(false), 4000);
+        
+        setTimeout(() => {
+          console.log(`🎯 Silent auto-selecting next challenge: ${shapes[nextChallengeIndex].name}`);
+          
+          setIsAutoProgressing(true); // Start auto-progression loading
+          
+          setSelectedImage(shapes[nextChallengeIndex].image);
+          
+          // Clear prompt field for fresh start on new challenge
+          setPrompt("");
+          
+          // Clear any previous results and generated images for clean slate
+          setResult(null);
+          setAIGeneratedimg(null);
+          setHasComparedCurrentGeneration(false);
+          
+          console.log(`🧹 Silent mode: Cleared prompt and results for fresh start on ${shapes[nextChallengeIndex].name}`);
+          
+          setIsAutoProgressing(false); // End auto-progression loading
+        }, 2000);
+      }, 1000);
     }
   }
 };
@@ -808,7 +1332,7 @@ const handleGenerateClick = async () => {
     const imageUrl = await generateImageByModel(selectedModel, prompt, generate_img, generateWithClipDrop);
     
     if (imageUrl) {
-      // Comparison parameters - updated to use voice system
+      // Comparison parameters - updated to use voice system and auto-progression
       const comparisonParams = {
         selectedImage,
         handleComparison,
@@ -820,7 +1344,14 @@ const handleGenerateClick = async () => {
         shapes,
         unlockedShapes,
         setUnlockedShapes,
-        setShowUnlockNotification
+        setShowUnlockNotification,
+        setSelectedImage,
+        setProgressData,
+        setPrompt,
+        setAIGeneratedimg,
+        setHasComparedCurrentGeneration,
+        setIsAutoProgressing,
+        setUnlockNotificationData
       };
       
       handleImageLoadingAndComparison(imageUrl, stateSetters, comparisonParams);
@@ -835,11 +1366,66 @@ const handleGenerateClick = async () => {
     setIsGenerating(false);
   }
 };
-  const handleKeyPress = (e) => {
-    if (e.key === 'Enter') {
-      handleGenerateClick();
+
+// Helper function to reset all progress
+const handleResetProgress = () => {
+  // Show confirmation dialog
+  const confirmReset = window.confirm(
+    "Are you sure you want to reset ALL progress?\n\n" +
+    "This will:\n" +
+    "• Clear all unlocked challenges\n" +
+    "• Remove all generated images\n" +
+    "• Delete all progress data\n" +
+    "• Reset to the beginning\n\n" +
+    "This action cannot be undone!"
+  );
+  
+  if (confirmReset) {
+    console.log("🔄 Resetting all progress...");
+    
+    // Stop any ongoing voice
+    if (isVoicePlaying) {
+      voiceManager.stopCurrentAudio();
+      setIsVoicePlaying(false);
     }
-  };
+    
+    // Clear localStorage
+    localStorage.removeItem("unlockedShapes");
+    localStorage.removeItem("challengeProgress");
+    console.log("🧹 Cleared localStorage");
+    
+    // Reset all state to initial values
+    setUnlockedShapes([0]); // Only first challenge unlocked
+    setProgressData({});
+    setSelectedImage(shapes[0].image); // Reset to first challenge
+    setAIGeneratedimg(null);
+    setResult(null);
+    setPrompt("");
+    setHasComparedCurrentGeneration(false);
+    setIsComparing(false);
+    setIsGenerating(false);
+    setIsImageLoading(false);
+    setShowUnlockNotification(false);
+    setIsAutoProgressing(false);
+    
+    console.log("✅ Progress reset complete! Back to the beginning.");
+    
+    // Show reset confirmation
+    setUnlockNotificationData({
+      type: 'reset',
+      score: 0,
+      challengeName: 'Progress Reset Complete!'
+    });
+    setShowUnlockNotification(true);
+    setTimeout(() => setShowUnlockNotification(false), 3000);
+  }
+};
+
+const handleKeyPress = (e) => {
+  if (e.key === 'Enter') {
+    handleGenerateClick();
+  }
+};
 
   return (
     <div className="container">
@@ -867,7 +1453,7 @@ const handleGenerateClick = async () => {
         ))}
       </div>
 
-      {/* Unlock Notification */}
+      {/* Enhanced Unlock Notification */}
       <AnimatePresence>
         {showUnlockNotification && (
           <motion.div
@@ -875,18 +1461,27 @@ const handleGenerateClick = async () => {
               position: 'fixed',
               top: '20px',
               right: '20px',
-              background: 'linear-gradient(135deg, #4ade80, #10b981)',
+              background: unlockNotificationData.type === 'auto' 
+                ? 'linear-gradient(135deg, #10b981, #059669)' 
+                : unlockNotificationData.type === 'reset'
+                ? 'linear-gradient(135deg, #ef4444, #dc2626)'
+                : 'linear-gradient(135deg, #4ade80, #10b981)',
               color: 'white',
-              padding: '12px 20px',
+              padding: '16px 24px',
               borderRadius: '12px',
               fontSize: '1rem',
               fontWeight: '600',
               fontFamily: 'Poppins, sans-serif',
-              boxShadow: '0 8px 25px rgba(16, 185, 129, 0.4)',
+              boxShadow: unlockNotificationData.type === 'auto'
+                ? '0 8px 25px rgba(16, 185, 129, 0.5)'
+                : '0 8px 25px rgba(16, 185, 129, 0.4)',
               zIndex: 1000,
               display: 'flex',
+              flexDirection: 'column',
               alignItems: 'center',
-              gap: '8px'
+              gap: '8px',
+              minWidth: '280px',
+              textAlign: 'center'
             }}
             initial={{ x: 100, opacity: 0, scale: 0.8 }}
             animate={{ x: 0, opacity: 1, scale: 1 }}
@@ -897,16 +1492,70 @@ const handleGenerateClick = async () => {
               damping: 20
             }}
           >
-            <motion.span
-              animate={{ rotate: [0, 15, -15, 0] }}
-              transition={{ 
-                duration: 0.6,
-                repeat: 2
-              }}
-            >
-              🔓
-            </motion.span>
-            Next Challenge Unlocked!
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <motion.span
+                animate={{ rotate: [0, 15, -15, 0] }}
+                transition={{ 
+                  duration: 0.6,
+                  repeat: 2
+                }}
+                style={{ fontSize: '1.2rem' }}
+              >
+                {unlockNotificationData.type === 'auto' ? '🎉' : 
+                 unlockNotificationData.type === 'reset' ? '🔄' : '🔓'}
+              </motion.span>
+              
+              <div>
+                {unlockNotificationData.type === 'auto' ? (
+                  <div>
+                    <div style={{ fontSize: '1rem', fontWeight: '700' }}>
+                      Excellent Work! {Math.round(unlockNotificationData.score)}%
+                    </div>
+                    <div style={{ fontSize: '0.8rem', opacity: 0.9, marginTop: '2px' }}>
+                      Auto-unlocked: {unlockNotificationData.challengeName}
+                    </div>
+                  </div>
+                ) : unlockNotificationData.type === 'reset' ? (
+                  <div>
+                    <div style={{ fontSize: '1rem', fontWeight: '700' }}>
+                      {unlockNotificationData.challengeName}
+                    </div>
+                    <div style={{ fontSize: '0.8rem', opacity: 0.9, marginTop: '2px' }}>
+                      All progress cleared. Starting fresh!
+                    </div>
+                  </div>
+                ) : (
+                  "Next Challenge Unlocked!"
+                )}
+              </div>
+            </div>
+            
+            {unlockNotificationData.type === 'auto' && (
+              <motion.div
+                style={{
+                  fontSize: '0.75rem',
+                  opacity: 0.8,
+                  marginTop: '4px',
+                  padding: '4px 8px',
+                  background: 'rgba(255,255,255,0.2)',
+                  borderRadius: '6px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px'
+                }}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 0.8, y: 0 }}
+                transition={{ delay: 0.3 }}
+              >
+                <motion.span
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                >
+                  🎯
+                </motion.span>
+                Moving to next challenge automatically...
+              </motion.div>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
@@ -922,6 +1571,10 @@ const handleGenerateClick = async () => {
             isVoicePlaying={isVoicePlaying}
             setIsVoicePlaying={setIsVoicePlaying}
             voiceManager={voiceManager}
+            progressData={progressData}
+            onShapeClick={handleProgressShapeClick}
+            selectedImage={selectedImage}
+            onResetProgress={handleResetProgress}
           />
         </div>
         <div className="main-content">
@@ -930,11 +1583,36 @@ const handleGenerateClick = async () => {
               {selectedImage ? (
                 <motion.div 
                   className="image-display"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5 }}
+                  key={selectedImage} // Force re-render when selectedImage changes
+                  initial={{ opacity: 0, y: 20, scale: 0.9 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  transition={{ duration: 0.6, ease: "easeOut" }}
                 >
-                  <img src={selectedImage} alt="Selected Shape" />
+                  <motion.img 
+                    src={selectedImage} 
+                    alt="Selected Shape"
+                    initial={{ filter: "blur(10px)" }}
+                    animate={{ filter: "blur(0px)" }}
+                    transition={{ duration: 0.5, delay: 0.1 }}
+                  />
+                  <motion.div
+                    style={{
+                      position: 'absolute',
+                      top: '8px',
+                      right: '8px',
+                      background: 'rgba(16, 185, 129, 0.9)',
+                      color: 'white',
+                      padding: '4px 8px',
+                      borderRadius: '12px',
+                      fontSize: '0.75rem',
+                      fontWeight: '600'
+                    }}
+                    initial={{ opacity: 0, scale: 0 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: 0.3 }}
+                  >
+                    🎯 Target
+                  </motion.div>
                 </motion.div>
               ) : <p>Target image will appear here</p>}
             </div>
