@@ -1,4 +1,8 @@
+import { computeMSSSIM } from '../utils/imageComparison';
+
+// Enhanced comparison handler using ONLY local MS-SSIM (no API fallback)
 const handleComparison = async (AIGeneratedimg, selectedImage) => {
+    console.log("🔍 Starting LOCAL-ONLY MS-SSIM comparison");
     console.log("Comparison inputs:", {
         AI: AIGeneratedimg,
         AI_type: typeof AIGeneratedimg,
@@ -7,71 +11,192 @@ const handleComparison = async (AIGeneratedimg, selectedImage) => {
     });
 
     if (!AIGeneratedimg || !selectedImage) {
-        alert("Please generate and select an image first");
-        return;
+        const errorResult = { 
+            error: "Please generate and select an image first", 
+            combined: 0,
+            method: "validation_error"
+        };
+        console.error("❌ Missing images for comparison");
+        return errorResult;
     }
 
+    // Track performance metrics as per project specifications
+    const startTime = Date.now();
+    
     try {
-        const formData = new FormData();
+        console.log("🎯 Performing LOCAL MS-SSIM comparison (API disabled)...");
         
-        // Handle target image
-        let targetBlob;
-        if (selectedImage instanceof File || selectedImage instanceof Blob) {
-            targetBlob = selectedImage;
-            console.log("Target is File/Blob");
-        } else if (typeof selectedImage === 'string') {
-            console.log("Target is string, fetching:", selectedImage.substring(0, 100));
-            const response = await fetch(selectedImage);
-            if (!response.ok) throw new Error(`Target fetch failed: ${response.status}`);
-            targetBlob = await response.blob();
-            console.log("Target blob created:", targetBlob.size, "bytes");
-        } else {
-            console.error("Invalid target format:", selectedImage);
-            throw new Error("Invalid selected image format");
-        }
-        formData.append("target_img", targetBlob, "target.png");
+        // ONLY METHOD: Local MS-SSIM comparison
+        const localResult = await attemptLocalComparison(AIGeneratedimg, selectedImage);
         
-        // Handle generated image
-        if (typeof AIGeneratedimg === 'string') {
-            if (AIGeneratedimg.startsWith('http')) {
-                console.log("AI image is HTTP URL:", AIGeneratedimg);
-                formData.append("generated_img", AIGeneratedimg);
-            } else if (AIGeneratedimg.startsWith('data:')) {
-                console.log("AI image is data URL");
-                const response = await fetch(AIGeneratedimg);
-                const blob = await response.blob();
-                formData.append("generated_img", blob, "generated.png");
-            } else {
-                console.error("AI image string doesn't start with http or data:", AIGeneratedimg.substring(0, 100));
-                throw new Error("Invalid AI generated image format - not HTTP or data URL");
-            }
-        } else if (AIGeneratedimg instanceof File || AIGeneratedimg instanceof Blob) {
-            console.log("AI image is File/Blob");
-            formData.append("generated_img", AIGeneratedimg, "generated.png");
-        } else {
-            console.error("Unknown AI image type:", typeof AIGeneratedimg, AIGeneratedimg);
-            throw new Error("Invalid AI generated image format");
+        if (localResult.success) {
+            const duration = Date.now() - startTime;
+            console.log(`✅ Local MS-SSIM comparison completed successfully in ${duration}ms`);
+            console.log("🔍 FULL localResult structure:", localResult);
+            console.log("🔍 localResult.result:", localResult.result);
+            
+            // Log analytics data for UX improvements
+            logAnalytics('comparison_success', {
+                method: 'local_ms_ssim_only',
+                duration,
+                score: localResult.result.percentage,
+                detailed_scores: localResult.result.detailed_scores
+            });
+            
+            const finalResult = {
+                ...localResult.result,
+                method: 'local_ms_ssim_only',
+                performance: { duration, timestamp: new Date().toISOString() }
+            };
+            
+            console.log("🎯 FINAL RESULT being returned from handleComparison:", finalResult);
+            
+            return finalResult;
         }
-
-        console.log("Sending request to backend...");
-        const res = await fetch("https://difussion-engine.onrender.com/game/comparison", {
-            method: "POST",
-            body: formData,
+        
+        // If local MS-SSIM fails, return error (no API fallback)
+        console.error("❌ Local MS-SSIM comparison failed");
+        console.log("Local failure reason:", localResult.error);
+        
+        // Return error result with detailed information about the failure
+        const duration = Date.now() - startTime;
+        
+        logAnalytics('comparison_local_failure', {
+            method: 'local_ms_ssim_only',
+            duration,
+            error: localResult.error
         });
-
-        if (!res.ok) {
-            const errorText = await res.text();
-            console.error("Backend error:", res.status, errorText);
-            throw new Error(`Backend error! status: ${res.status}, message: ${errorText}`);
-        }
-
-        const data = await res.json();
-        console.log("Comparison result:", data);
-        return data;
-    } catch (err) {
-        console.error("Error comparing:", err);
-        alert(`Comparison failed: ${err.message}`);
-        throw err;
+        
+        return {
+            error: `MS-SSIM comparison failed: ${localResult.error}`,
+            combined: 0,
+            method: 'local_ms_ssim_failed',
+            performance: { duration, timestamp: new Date().toISOString() },
+            failure_reason: localResult.error
+        };
+        
+    } catch (unexpectedError) {
+        const duration = Date.now() - startTime;
+        console.error("💥 Unexpected error in MS-SSIM comparison system:", unexpectedError);
+        
+        logAnalytics('comparison_critical_error', {
+            error: unexpectedError.message,
+            duration,
+            method: 'local_ms_ssim_only'
+        });
+        
+        return {
+            error: `Critical MS-SSIM comparison error: ${unexpectedError.message}`,
+            combined: 0,
+            method: 'critical_failure',
+            performance: { duration, timestamp: new Date().toISOString() }
+        };
     }
 };
-export default handleComparison
+
+// Analytics helper function for user behavior tracking
+const logAnalytics = (event, data) => {
+    try {
+        // Store analytics data for UX improvements as per project requirements
+        const analyticsData = {
+            timestamp: new Date().toISOString(),
+            event,
+            data,
+            userAgent: navigator.userAgent,
+            sessionId: sessionStorage.getItem('sessionId') || crypto.randomUUID()
+        };
+        
+        // Store in localStorage for analysis
+        const existingData = JSON.parse(localStorage.getItem('imageComparisonAnalytics') || '[]');
+        existingData.push(analyticsData);
+        
+        // Keep only last 100 entries to prevent storage bloat
+        if (existingData.length > 100) {
+            existingData.splice(0, existingData.length - 100);
+        }
+        
+        localStorage.setItem('imageComparisonAnalytics', JSON.stringify(existingData));
+        console.log('📊 Analytics logged:', event, data);
+    } catch (error) {
+        console.warn('Analytics logging failed:', error);
+    }
+};
+
+// Attempt local MS-SSIM comparison (primary method)
+const attemptLocalComparison = async (AIGeneratedimg, selectedImage) => {
+    try {
+        console.log('🎯 Starting enhanced local MS-SSIM comparison...');
+        console.log('AI Image:', typeof AIGeneratedimg, AIGeneratedimg);
+        console.log('Selected Image:', typeof selectedImage, selectedImage);
+        
+        // Validate image sources
+        if (!AIGeneratedimg || !selectedImage) {
+            throw new Error('Missing image sources for local comparison');
+        }
+        
+        console.log('📸 Image sources validated, beginning MS-SSIM analysis...');
+        
+        // Use the enhanced MS-SSIM algorithm with 5 scales for maximum accuracy
+        const result = await computeMSSSIM(selectedImage, AIGeneratedimg, 5);
+        
+        console.log('🔍 MS-SSIM computation result:', result);
+        
+        if (!result) {
+            throw new Error('MS-SSIM computation returned null/undefined');
+        }
+        
+        if (result.error) {
+            throw new Error(result.error);
+        }
+        
+        // Validate result structure
+        if (typeof result.percentage !== 'number' || isNaN(result.percentage)) {
+            console.error('Invalid result structure:', result);
+            throw new Error('Invalid MS-SSIM result structure - missing or invalid percentage');
+        }
+        
+        // Additional validation for minimum score threshold
+        if (result.percentage < 0 || result.percentage > 100) {
+            console.error('Invalid percentage range:', result.percentage);
+            throw new Error(`MS-SSIM result out of valid range (0-100): ${result.percentage}`);
+        }
+        
+        // Enhance the result with additional metadata - flatten structure for easier access
+        const enhancedResult = {
+            ...result,
+            combined: result.percentage / 100, // Convert to 0-1 scale for consistency
+            percentage: result.percentage,
+            detailed_scores: result.detailed_scores || {},
+            ms_ssim: result.ms_ssim || (result.percentage / 100),
+            algorithm: 'Enhanced_MS_SSIM_v2.2',
+            analysis: result.analysis || {},
+            per_scale_scores: result.per_scale_scores || [],
+            method: 'local_ms_ssim',
+            accuracy_level: 'high',
+            algorithm_version: '2.2'
+        };
+        
+        console.log('✅ Local MS-SSIM comparison successful:', enhancedResult.percentage + '%');
+        console.log('📊 Enhanced result detailed_scores:', enhancedResult.detailed_scores);
+        
+        return { success: true, result: enhancedResult };
+        
+    } catch (error) {
+        console.error('⚠️ Local MS-SSIM comparison failed:', error);
+        console.error('Error stack:', error.stack);
+        
+        return { 
+            success: false, 
+            error: `Local comparison failed: ${error.message}`,
+            method: 'local_ms_ssim',
+            debug_details: {
+                AIGeneratedimg_type: typeof AIGeneratedimg,
+                selectedImage_type: typeof selectedImage,
+                error_message: error.message,
+                error_stack: error.stack
+            }
+        };
+    }
+};
+
+export default handleComparison;

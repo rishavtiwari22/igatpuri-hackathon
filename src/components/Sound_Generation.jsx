@@ -1,8 +1,4 @@
 // Sound generation functions
-import React, { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import ProgressTracker from "./ProgressTracker";
-import { computeMSSSIM, getQualityDescription, formatDetailedScores } from "../utils/imageComparison";
   const createVictorySound = () => {
     const audioContext = new (window.AudioContext || window.webkitAudioContext)();
     

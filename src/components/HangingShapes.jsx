@@ -30,7 +30,6 @@ export default function HangingShapes() {
   const [prompt, setPrompt] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [isComparing, setIsComparing] = useState(false);
-  const [comparisonResult, setComparisonResult] = useState(null);
   const [result, setResult] = useState(null)
   const [selectedModel, setSelectedModel] = useState("pollinations");
   const [hasComparedCurrentGeneration, setHasComparedCurrentGeneration] = useState(false); // Flag to prevent multiple comparisons
@@ -97,6 +96,7 @@ export default function HangingShapes() {
       const timer = setTimeout(async () => {
         try {
           setIsVoicePlaying(true);
+          console.log('🎵 Playing startup voice with alternation...');
           await voiceManager.playStartupVoice();
           console.log("🎵 Startup voice played successfully");
           sessionStorage.setItem('hasPlayedStartupVoice', 'true');
@@ -111,6 +111,219 @@ export default function HangingShapes() {
     }
   }, []); // Only run once on mount
 
+  // Debug: Log voice status periodically (for development)
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development') {
+      const interval = setInterval(() => {
+        const status = voiceManager.getVoiceAlternationStatus();
+        console.log('📊 Voice Status:', status);
+      }, 10000); // Log every 10 seconds
+      
+      return () => clearInterval(interval);
+    }
+  }, []);
+
+  // Expose voice testing functions to window for easy console testing
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development') {
+      window.testVoices = {
+        playStartup: () => voiceManager.playStartupVoice(),
+        playGenerating: () => voiceManager.playGeneratingVoice(),
+        playSuccess: () => voiceManager.playSuccessVoice(),
+        playMotivation: () => voiceManager.playMotivationVoice(),
+        playUnlock: () => voiceManager.playUnlockVoice(),
+        playNearSuccess: () => voiceManager.playNearSuccessVoice(),
+        playCreative: () => voiceManager.playCreativeVoice(),
+        playMilestone: () => voiceManager.playMilestoneVoice(),
+        playFinalCelebration: () => voiceManager.playFinalCelebrationVoice(),
+        playWelcome: () => voiceManager.playWelcomeVoice(),
+        getStatus: () => voiceManager.getVoiceAlternationStatus(),
+        testCategory: (category, times = 4) => {
+          console.log(`🎵 Testing ${category} alternation ${times} times...`);
+          let count = 0;
+          const testInterval = setInterval(async () => {
+            if (count >= times) {
+              clearInterval(testInterval);
+              console.log(`🎵 ${category} test completed!`);
+              return;
+            }
+            count++;
+            console.log(`🎵 ${category} test ${count}/${times}`);
+            try {
+              await window.testVoices[`play${category.charAt(0).toUpperCase() + category.slice(1)}`]();
+              console.log(`✅ ${category} voice ${count} played successfully`);
+            } catch (error) {
+              console.error(`❌ ${category} voice ${count} failed:`, error);
+            }
+          }, 4000);
+        },
+        resetStartup: () => {
+          sessionStorage.removeItem('hasPlayedStartupVoice');
+          console.log('🎵 Startup voice flag reset - refresh to test again');
+        },
+        // Add MS-SSIM testing function
+        testComparison: async () => {
+          console.log('🧪 Testing MS-SSIM comparison with current images...');
+          if (selectedImage && AIGeneratedimg) {
+            try {
+              const result = await handleComparison(AIGeneratedimg, selectedImage);
+              console.log('🧪 Test comparison result:', result);
+              return result;
+            } catch (error) {
+              console.error('🧪 Test comparison failed:', error);
+              return { error: error.message };
+            }
+          } else {
+            console.warn('🧪 No images available for testing. Generate an image first.');
+            return { error: 'No images available' };
+          }
+        },
+        
+        testSimpleComparison: async () => {
+          console.log('🧪 Testing with simple identical images...');
+          
+          // Create two identical simple images
+          const canvas1 = document.createElement('canvas');
+          canvas1.width = 100;
+          canvas1.height = 100;
+          const ctx1 = canvas1.getContext('2d');
+          ctx1.fillStyle = 'red';
+          ctx1.fillRect(0, 0, 100, 100);
+          const dataUrl1 = canvas1.toDataURL();
+          
+          const canvas2 = document.createElement('canvas');
+          canvas2.width = 100;
+          canvas2.height = 100;
+          const ctx2 = canvas2.getContext('2d');
+          ctx2.fillStyle = 'red';
+          ctx2.fillRect(0, 0, 100, 100);
+          const dataUrl2 = canvas2.toDataURL();
+          
+          try {
+            const result = await handleComparison(dataUrl1, dataUrl2);
+            console.log('✅ Simple test result:', result);
+            return result;
+          } catch (error) {
+            console.error('❌ Simple test failed:', error);
+            return { error: error.message };
+          }
+        },
+        
+        // Add simple image loading test
+        testImageLoading: async () => {
+          console.log('🧪 Testing image loading functionality...');
+          try {
+            // Test with a simple image URL
+            const testUrl = "https://image.pollinations.ai/prompt/red%20car";
+            console.log('🧪 Testing with URL:', testUrl);
+            
+            const img = new Image();
+            img.crossOrigin = "anonymous";
+            
+            return new Promise((resolve) => {
+              img.onload = () => {
+                console.log('✅ Test image loaded successfully:', img.width, 'x', img.height);
+                resolve({ success: true, width: img.width, height: img.height });
+              };
+              img.onerror = (error) => {
+                console.error('❌ Test image loading failed:', error);
+                resolve({ success: false, error: error.message || 'Unknown error' });
+              };
+              img.src = testUrl;
+              
+              // Timeout after 10 seconds
+              setTimeout(() => {
+                console.warn('⏰ Test image loading timed out');
+                resolve({ success: false, error: 'Timeout' });
+              }, 10000);
+            });
+          } catch (error) {
+            console.error('🧪 Image loading test failed:', error);
+            return { error: error.message };
+          }
+        },
+        // Add comprehensive debugging function
+        fullDebugTest: async () => {
+          console.log('🔬 Starting comprehensive debug test...');
+          
+          // Test 1: Environment check
+          console.log('📋 Environment Check:');
+          console.log('- selectedImage:', selectedImage);
+          console.log('- AIGeneratedimg:', AIGeneratedimg);
+          console.log('- Browser:', navigator.userAgent);
+          console.log('- Date:', new Date().toISOString());
+          
+          // Test 2: Basic URL test
+          console.log('🌐 Testing basic image URL...');
+          try {
+            const testResult = await window.testVoices.testImageLoading();
+            console.log('✅ Basic URL test result:', testResult);
+          } catch (error) {
+            console.error('❌ Basic URL test failed:', error);
+          }
+          
+          // Test 3: MS-SSIM import test
+          console.log('📦 Testing MS-SSIM imports...');
+          try {
+            const { computeMSSSIM } = await import('../utils/imageComparison');
+            console.log('✅ MS-SSIM import successful');
+            
+            // Test with two identical simple images
+            const canvas1 = document.createElement('canvas');
+            canvas1.width = 100;
+            canvas1.height = 100;
+            const ctx1 = canvas1.getContext('2d');
+            ctx1.fillStyle = 'red';
+            ctx1.fillRect(0, 0, 100, 100);
+            const dataUrl1 = canvas1.toDataURL();
+            
+            const canvas2 = document.createElement('canvas');
+            canvas2.width = 100;
+            canvas2.height = 100;
+            const ctx2 = canvas2.getContext('2d');
+            ctx2.fillStyle = 'red';
+            ctx2.fillRect(0, 0, 100, 100);
+            const dataUrl2 = canvas2.toDataURL();
+            
+            console.log('🧪 Testing MS-SSIM with identical red squares...');
+            const ssimResult = await computeMSSSIM(dataUrl1, dataUrl2, 3);
+            console.log('✅ SSIM test result:', ssimResult);
+            
+            if (ssimResult.error) {
+              console.error('❌ SSIM computation had errors:', ssimResult.error);
+            } else {
+              console.log('🎯 SSIM percentage:', ssimResult.percentage);
+            }
+            
+          } catch (error) {
+            console.error('❌ MS-SSIM import or computation failed:', error);
+          }
+          
+          // Test 4: Full comparison test (if images available)
+          if (selectedImage && AIGeneratedimg) {
+            console.log('🔍 Testing full comparison with current images...');
+            try {
+              const comparisonResult = await window.testVoices.testComparison();
+              console.log('✅ Full comparison result:', comparisonResult);
+            } catch (error) {
+              console.error('❌ Full comparison failed:', error);
+            }
+          } else {
+            console.log('⚠️ Skipping full comparison test - no images available');
+          }
+          
+          console.log('🔬 Comprehensive debug test completed');
+        }
+      };
+      
+      console.log('🎵 Voice testing functions added to window.testVoices');
+      console.log('Usage: window.testVoices.testCategory("success", 4)');
+      console.log('🧪 MS-SSIM testing: window.testVoices.testComparison()');
+      console.log('🧪 Image loading test: window.testVoices.testImageLoading()');
+      console.log('🔬 Full debug test: window.testVoices.fullDebugTest()');
+    }
+  }, [selectedImage, AIGeneratedimg]);
+
   const handleShapeClick = (image, index) => {
     if (unlockedShapes.includes(index)) {
       // Stop any ongoing voice
@@ -120,7 +333,7 @@ export default function HangingShapes() {
       }
       
       setSelectedImage(image); // Set the target image
-      setComparisonResult(null); // Clear previous comparison when selecting new target
+      setResult(null); // Clear previous comparison when selecting new target
       setResult(null); // Clear previous results
       setHasComparedCurrentGeneration(false); // Reset comparison flag for new target
       playClickSound(); // Play click sound when shape is successfully clicked
@@ -132,204 +345,7 @@ export default function HangingShapes() {
     }
   };
 
-  // const handleGenImg = (image) => {
-  //   setAIGeneratedimg(image);
-  //   // Clear any previous comparison result when setting new generated image
-  //   // setComparisonResult(null);
-  // };
 
-  // // Image comparison function
-  // const compareImages = async (targetImage, generatedImage) => {
-  //   if (!targetImage || !generatedImage) return;
-    
-  //   setIsComparing(true);
-  //   setComparisonResult(null);
-    
-  //   try {
-  //     console.log("Starting image comparison...");
-  //     console.log("Target:", targetImage);
-  //     console.log("Generated:", generatedImage);
-      
-  //     const result = await computeMSSSIM(targetImage, generatedImage);
-  //     setComparisonResult(result);
-  //     console.log("MS-SSIM Comparison Result:", result);
-  //   } catch (error) {
-  //     console.error("Error comparing images:", error);
-  //     const errorResult = { 
-  //       error: "Failed to compare images: " + error.message,
-  //       percentage: 0 
-  //     };
-  //     setComparisonResult(errorResult);
-  //   } finally {
-  //     setIsComparing(false);
-  //   }
-  // };
-
-  // // Effect to automatically compare when both images are available AND generation is complete
-  // useEffect(() => {
-  //   if (selectedImage && AIGeneratedimg && !isGenerating && !isComparing) {
-  //     console.log("Auto-comparing images after generation completed...");
-  //     handleComparison(selectedImage, AIGeneratedimg);
-  //   }
-  // }, [selectedImage, AIGeneratedimg, isGenerating]);
-
-  // // Check for progression after comparison
-  // useEffect(() => {
-  //   if (comparisonResult && !comparisonResult.error && comparisonResult.percentage >= 70) {
-  //     // Find which challenge the user just completed based on the selected image
-  //     const currentChallengeIndex = shapes.findIndex(shape => shape.image === selectedImage);
-      
-  //     console.log("Progression check:", {
-  //       currentChallengeIndex,
-  //       unlockedShapes,
-  //       percentage: comparisonResult.percentage
-  //     });
-      
-  //     // Only proceed if we found a valid challenge index
-  //     if (currentChallengeIndex !== -1) {
-  //       const nextChallengeIndex = currentChallengeIndex + 1;
-        
-  //       // Only unlock next challenge if:
-  //       // 1. There is a next challenge (not at the end)
-  //       // 2. The next challenge is not already unlocked
-  //       // 3. The current challenge was already unlocked (user didn't somehow complete a locked challenge)
-  //       if (nextChallengeIndex < shapes.length && 
-  //           !unlockedShapes.includes(nextChallengeIndex) && 
-  //           unlockedShapes.includes(currentChallengeIndex)) {
-          
-  //         console.log(`Unlocking challenge ${nextChallengeIndex} after completing challenge ${currentChallengeIndex}`);
-          
-  //         setTimeout(() => {
-  //           setUnlockedShapes(prev => {
-  //             const newUnlocked = [...prev, nextChallengeIndex];
-  //             console.log("New unlocked shapes:", newUnlocked);
-  //             return newUnlocked;
-  //           });
-  //           setShowUnlockNotification(true);
-            
-  //           // Hide notification after 3 seconds
-  //           setTimeout(() => {
-  //             setShowUnlockNotification(false);
-  //           }, 3000);
-            
-  //           playSuccessSound();
-  //         }, 1000); // Delay to let user see the result first
-  //       } else {
-  //         console.log("No progression needed:", {
-  //           nextChallengeIndex,
-  //           shapesLength: shapes.length,
-  //           nextAlreadyUnlocked: unlockedShapes.includes(nextChallengeIndex),
-  //           currentIsUnlocked: unlockedShapes.includes(currentChallengeIndex)
-  //         });
-  //       }
-  //     }
-  //   }
-  // }, [comparisonResult, unlockedShapes, shapes, selectedImage]);
-  // const generateWithPollinations = async (prompt) => {
-  //   const width = 1024;
-  //   const height = 1024;
-  //   const seed = 42;
-  //   const model = "flux";
-    
-  //   const encodedPrompt = encodeURIComponent(prompt);
-  //   const params = new URLSearchParams({
-  //     width: width,
-  //     height: height,
-  //     seed: seed,
-  //     model: model,
-  //     nologo: 'true'
-  //   });
-    
-  //   const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?${params.toString()}`;
-    
-  //   // Create image with proper loading
-  //   const img = new Image();
-  //   img.crossOrigin = "anonymous";
-    
-  //   const imageLoadPromise = new Promise((resolve, reject) => {
-  //     img.onload = () => {
-  //       console.log("Pollinations image loaded successfully");
-  //       resolve();
-  //     };
-      
-  //     img.onerror = (error) => {
-  //       console.warn("Failed to load Pollinations image:", error);
-  //       resolve(); // Still resolve to continue the flow
-  //     };
-      
-  //     img.src = imageUrl;
-  //   });
-    
-  //   await imageLoadPromise;
-  //   return imageUrl;
-  // };
-
-  // const generateWithClipDrop = async (prompt) => {
-  //   // Note: You'll need to add your ClipDrop API key here
-  //   // const API_KEY = '29da0145f174361bd87d07659016867767d8cb1b8a7cbf2376ddab617f3b7dca4effe88696214e2f5dd8efe7357a1e84'; // Replace with your actual API key
-
-  //   const API_KEY = 'fc6c83f512362814d41b52eaec726a250e8561f0ed992e9dfdc3339846b41f1928a70b5b782b611403129be2f58a594c';
-  //   const form = new FormData();
-  //   form.append('prompt', prompt);
-    
-  //   try {
-  //     const response = await fetch('https://clipdrop-api.co/text-to-image/v1', {
-  //       method: 'POST',
-  //       headers: {
-  //         'x-api-key': API_KEY,
-  //       },
-  //       body: form,
-  //     });
-      
-  //     if (!response.ok) {
-  //       throw new Error(`ClipDrop API error: ${response.status}`);
-  //     }
-      
-  //     const buffer = await response.arrayBuffer();
-  //     const blob = new Blob([buffer], { type: 'image/png' });
-  //     const imageUrl = URL.createObjectURL(blob);
-      
-  //     console.log("ClipDrop image generated successfully");
-  //     return imageUrl;
-  //   } catch (error) {
-  //     console.error("Error generating with ClipDrop:", error);
-  //     throw error;
-  //   }
-  // };
-  
-  const generateWithClipDrop = async (prompt) => {
-    // Note: You'll need to add your ClipDrop API key here
-
-    const API_KEY = 'fc6c83f512362814d41b52eaec726a250e8561f0ed992e9dfdc3339846b41f1928a70b5b782b611403129be2f58a594c'; // Replace with your actual API key
-    
-    
-    const form = new FormData();
-    form.append('prompt', prompt);
-    
-    try {
-      const response = await fetch('https://clipdrop-api.co/text-to-image/v1', {
-        method: 'POST',
-        headers: {
-          'x-api-key': API_KEY,
-        },
-        body: form,
-      });
-      
-      if (!response.ok) {
-        throw new Error(`ClipDrop API error: ${response.status}`);
-      }
-      
-      const buffer = await response.arrayBuffer();
-      const blob = new Blob([buffer], { type: 'image/png' });
-      const imageUrl = URL.createObjectURL(blob);
-      
-      console.log("ClipDrop image generated successfully");
-      return imageUrl;
-    } catch (error) {
-      console.error("Error generating with ClipDrop:", error);
-      throw error;
-    }
-  };
 
   // Loader Component
   const LoaderComponent = () => {
@@ -371,23 +387,80 @@ export default function HangingShapes() {
   const generate_img = async (prompt) => {
     console.log("🎨 Starting image generation with prompt:", prompt);
     
-    // Use the simplified generation pattern
-    const width = 1024;
-    const height = 1024;
-    const seed = Math.floor(Math.random() * 1000);
-    const encodedPrompt = encodeURIComponent(prompt);
-    const params = new URLSearchParams({
-        width: width,
-        height: height,
-        seed: seed,
-        model: "flux",
-        nologo: 'true'
-    });
-    
-    const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?${params.toString()}`;
-    
-    console.log("✅ Image URL generated:", imageUrl);
-    return imageUrl;
+    try {
+      // Use the simplified generation pattern with better error handling
+      const width = 1024;
+      const height = 1024;
+      const seed = Math.floor(Math.random() * 1000);
+      const encodedPrompt = encodeURIComponent(prompt);
+      
+      // Try multiple URL formats for better compatibility
+      const urlFormats = [
+        // Most basic format (try this first since it's working)
+        () => `https://image.pollinations.ai/prompt/${encodedPrompt}`,
+        // Simplified format with minimal parameters
+        () => `https://image.pollinations.ai/prompt/${encodedPrompt}?width=${width}&height=${height}`,
+        // With seed but no model
+        () => `https://image.pollinations.ai/prompt/${encodedPrompt}?width=${width}&height=${height}&seed=${seed}`,
+        // Alternative format without model parameter
+        () => {
+          const params = new URLSearchParams({
+            width: width,
+            height: height,
+            seed: seed,
+            nologo: 'true'
+          });
+          return `https://image.pollinations.ai/prompt/${encodedPrompt}?${params.toString()}`;
+        }
+      ];
+      
+      // Try each URL format
+      for (let i = 0; i < urlFormats.length; i++) {
+        const imageUrl = urlFormats[i]();
+        console.log(`🔄 Trying URL format ${i + 1}/${urlFormats.length}:`, imageUrl);
+        
+        try {
+          // Test if the URL is accessible
+          const isAccessible = await new Promise((resolve) => {
+            const testImg = new Image();
+            testImg.crossOrigin = "anonymous";
+            
+            const timeout = setTimeout(() => {
+              console.warn(`⏰ URL format ${i + 1} timed out`);
+              resolve(false);
+            }, 8000); // Increased to 8 seconds to allow for generation time
+            
+            testImg.onload = () => {
+              clearTimeout(timeout);
+              console.log(`✅ URL format ${i + 1} verified and accessible`);
+              resolve(true);
+            };
+            
+            testImg.onerror = (error) => {
+              clearTimeout(timeout);
+              console.warn(`❌ URL format ${i + 1} failed:`, error);
+              resolve(false);
+            };
+            
+            testImg.src = imageUrl;
+          });
+          
+          if (isAccessible) {
+            console.log("✅ Found working image URL:", imageUrl);
+            return imageUrl;
+          }
+        } catch (error) {
+          console.warn(`❌ Error testing URL format ${i + 1}:`, error);
+        }
+      }
+      
+      // If all Pollinations URLs fail, throw error to trigger ClipDrop fallback
+      throw new Error("All Pollinations URL formats failed");
+      
+    } catch (error) {
+      console.error("❌ Error in generate_img:", error);
+      throw error;
+    }
   };
 
 
@@ -444,10 +517,16 @@ const playGenerationSoundAndVoice = async (playGenerationStartSound, voiceManage
     // Play generating voice if voice is enabled
     if (voiceEnabled) {
       setIsVoicePlaying(true);
+      console.log('🎵 Starting generation voice with alternation...');
+      
       setTimeout(async () => {
         try {
           await voiceManager.playGeneratingVoice();
           console.log("🎵 Generating voice played successfully");
+          
+          // Log current voice status after playing
+          const status = voiceManager.getVoiceAlternationStatus();
+          console.log('📊 Generating voice status:', status.generating);
         } catch (error) {
           console.warn("🎵 Generating voice failed:", error);
         } finally {
@@ -465,17 +544,45 @@ const playGenerationSoundAndVoice = async (playGenerationStartSound, voiceManage
 const generateImageByModel = async (selectedModel, prompt, generate_img, generateWithClipDrop) => {
   let imageUrl;
   
-  if (selectedModel === "pollinations") {
-    console.log("📸 Generating with Pollinations AI...");
-    imageUrl = await generate_img(prompt);
-  } else if (selectedModel === "clipdrop") {
-    console.log("📸 Generating with ClipDrop AI...");
-    imageUrl = await generateWithClipDrop(prompt);
-  } else {
-    throw new Error(`Unknown model: ${selectedModel}`);
+  try {
+    if (selectedModel === "pollinations") {
+      console.log("📸 Generating with Pollinations AI...");
+      imageUrl = await generate_img(prompt);
+    } else if (selectedModel === "clipdrop") {
+      console.log("📸 Generating with ClipDrop AI...");
+      imageUrl = await generateWithClipDrop(prompt);
+    } else {
+      throw new Error(`Unknown model: ${selectedModel}`);
+    }
+    
+    return imageUrl;
+  } catch (error) {
+    console.error(`❌ ${selectedModel} generation failed:`, error);
+    
+    // If Pollinations fails, automatically try ClipDrop as fallback
+    if (selectedModel === "pollinations") {
+      console.log("🔄 Pollinations failed, trying ClipDrop as fallback...");
+      try {
+        imageUrl = await generateWithClipDrop(prompt);
+        console.log("✅ ClipDrop fallback successful!");
+        return imageUrl;
+      } catch (fallbackError) {
+        console.error("❌ ClipDrop fallback also failed:", fallbackError);
+        throw new Error("Both Pollinations and ClipDrop failed");
+      }
+    } else {
+      // If ClipDrop fails, try Pollinations as fallback
+      console.log("🔄 ClipDrop failed, trying Pollinations as fallback...");
+      try {
+        imageUrl = await generate_img(prompt);
+        console.log("✅ Pollinations fallback successful!");
+        return imageUrl;
+      } catch (fallbackError) {
+        console.error("❌ Pollinations fallback also failed:", fallbackError);
+        throw new Error("Both ClipDrop and Pollinations failed");
+      }
+    }
   }
-  
-  return imageUrl;
 };
 
 // Helper function to handle image loading and comparison
@@ -513,7 +620,8 @@ const handleImageComparisonFlow = (imageUrl, setIsImageLoading, comparisonParams
   
   img.onerror = () => {
     console.error("❌ Failed to load generated image for comparison");
-    setResult({ error: "Failed to load image", combined: 0 });
+    console.log("🔄 Attempting to skip comparison and display image anyway...");
+    setResult({ error: "Failed to load image for comparison, but image may still be visible", combined: 0 });
     setIsComparing(false);
     setIsImageLoading(false);
   };
@@ -527,17 +635,62 @@ const performComparison = async (imageUrl, selectedImage, handleComparison, setI
     setIsComparing(true);
     const comparisonResult = await handleComparison(imageUrl, selectedImage);
     
-    if (comparisonResult && comparisonResult.result) {
-      console.log("✅ Comparison completed:", comparisonResult);
-      setResult(comparisonResult);
-      handleVoiceFeedback(comparisonResult, voiceEnabled, voiceManager, setIsVoicePlaying, selectedImage, shapes, unlockedShapes, setUnlockedShapes, setShowUnlockNotification);
+    console.log("🔍 Raw comparison result:", comparisonResult);
+    console.log("🔍 Comparison result type:", typeof comparisonResult);
+    console.log("🔍 Comparison result keys:", Object.keys(comparisonResult || {}));
+    
+    // More robust validation for MS-SSIM result structure
+    if (comparisonResult) {
+      // Check if it has an explicit error
+      if (comparisonResult.error) {
+        console.warn("❌ Comparison failed with explicit error:", comparisonResult.error);
+        const errorMessage = comparisonResult.error;
+        setResult({ error: errorMessage, combined: 0, percentage: 0 });
+        return;
+      }
+      
+      // Check for any valid score indicators (be more permissive)
+      const hasValidPercentage = typeof comparisonResult.percentage === 'number' && !isNaN(comparisonResult.percentage);
+      const hasValidCombined = typeof comparisonResult.combined === 'number' && !isNaN(comparisonResult.combined);
+      const hasValidMsSSIM = typeof comparisonResult.ms_ssim === 'number' && !isNaN(comparisonResult.ms_ssim);
+      const hasAnyResult = comparisonResult.result;
+      
+      console.log("🔍 Validation checks:", {
+        hasValidPercentage,
+        hasValidCombined, 
+        hasValidMsSSIM,
+        hasAnyResult,
+        percentageValue: comparisonResult.percentage,
+        combinedValue: comparisonResult.combined,
+        msssimValue: comparisonResult.ms_ssim
+      });
+      
+      if (hasValidPercentage || hasValidCombined || hasValidMsSSIM || hasAnyResult) {
+        // Normalize the result structure for the UI
+        const normalizedResult = {
+          ...comparisonResult,
+          // Ensure combined is available (0-1 scale for UI compatibility)
+          combined: comparisonResult.combined || (comparisonResult.percentage / 100) || comparisonResult.ms_ssim || 0,
+          // Ensure percentage is available (0-100 scale for display)
+          percentage: comparisonResult.percentage || (comparisonResult.combined * 100) || (comparisonResult.ms_ssim * 100) || 0
+        };
+        
+        console.log("✅ Comparison completed successfully:", normalizedResult);
+        console.log("🎯 Setting result state with:", normalizedResult);
+        setResult(normalizedResult);
+        handleVoiceFeedback(normalizedResult, voiceEnabled, voiceManager, setIsVoicePlaying, selectedImage, shapes, unlockedShapes, setUnlockedShapes, setShowUnlockNotification);
+      } else {
+        console.warn("❌ Comparison result missing valid score:", comparisonResult);
+        const errorMessage = "Invalid comparison result - no valid score found";
+        setResult({ error: errorMessage, combined: 0, percentage: 0 });
+      }
     } else {
-      console.warn("Comparison failed");
-      setResult({ error: "Comparison failed", combined: 0 });
+      console.warn("❌ No comparison result returned");
+      setResult({ error: "No comparison result", combined: 0, percentage: 0 });
     }
   } catch (error) {
-    console.error("Comparison error:", error);
-    setResult({ error: "Comparison failed", combined: 0 });
+    console.error("💥 Comparison error:", error);
+    setResult({ error: `Comparison failed: ${error.message}`, combined: 0, percentage: 0 });
   } finally {
     setIsComparing(false);
   }
@@ -551,8 +704,12 @@ const handleVoiceFeedback = async (comparisonResult, voiceEnabled, voiceManager,
       
       // Create challenge context for contextual voice selection
       const currentChallengeIndex = shapes.findIndex(shape => shape.image === selectedImage);
-      const score = comparisonResult.result?.combined || comparisonResult.combined || 0;
-      const percentage = score > 1 ? Math.round(score) : Math.round(score * 100);
+      
+      // Get the score from the normalized result
+      const score = comparisonResult.combined || comparisonResult.percentage / 100 || 0;
+      const percentage = comparisonResult.percentage || score * 100 || 0;
+      
+      console.log(`🎵 Playing contextual voice for ${percentage.toFixed(1)}% similarity with alternation...`);
       
       // Determine if this will unlock next challenge
       const nextChallengeIndex = currentChallengeIndex + 1;
@@ -570,6 +727,15 @@ const handleVoiceFeedback = async (comparisonResult, voiceEnabled, voiceManager,
       
       // Play contextual voice based on result
       await voiceManager.playContextualVoice(comparisonResult, challengeContext);
+      
+      // Log voice status after contextual voice
+      const status = voiceManager.getVoiceAlternationStatus();
+      console.log('📊 Voice status after contextual feedback:', {
+        success: status.success,
+        motivation: status.motivation,
+        nearSuccess: status.nearSuccess,
+        unlock: status.unlock
+      });
       
       // Handle progression if success
       if (percentage >= 70 && willUnlockNext) {
@@ -750,7 +916,7 @@ const handleGenerateClick = async () => {
           <ProgressTracker 
             unlockedShapes={unlockedShapes} 
             shapes={shapes} 
-            comparisonResult={comparisonResult}
+            comparisonResult={result}
             voiceEnabled={voiceEnabled}
             setVoiceEnabled={setVoiceEnabled}
             isVoicePlaying={isVoicePlaying}
@@ -847,8 +1013,10 @@ const handleGenerateClick = async () => {
                           setIsImageLoading(false);
                         }} 
                         onError={(e) => {
-                          console.error("Image load failed:", e);
+                          console.error("❌ Image display failed:", e);
+                          console.log("🔄 Image URL that failed:", AIGeneratedimg);
                           setIsImageLoading(false);
+                          // Keep the image state so users can see what URL was generated
                         }}
                         style={{
                           maxWidth: '100%',
@@ -926,7 +1094,7 @@ const handleGenerateClick = async () => {
                     transition={{ delay: 0.3 }}
                   >
                     Using MS-SSIM algorithm to compare<br/>
-                    target vs generated image
+                    target vs generated image (Local Processing Only)
                     {voiceEnabled && (
                       <motion.div
                         style={{ 
@@ -948,11 +1116,19 @@ const handleGenerateClick = async () => {
                   </motion.div>
                 </motion.div>
               ) : (
-                <FeedbackComponent 
-                  selectedImage={selectedImage}
-                  comparisonResult={result}
-                  isComparing={isComparing}
-                />
+                <>
+                  {/* DEBUG: Log what's being passed to FeedbackComponent */}
+                  {console.log("🎯 HangingShapes - Passing to FeedbackComponent:", {
+                    selectedImage: !!selectedImage,
+                    result,
+                    isComparing
+                  })}
+                  <FeedbackComponent 
+                    selectedImage={selectedImage}
+                    comparisonResult={result}
+                    isComparing={isComparing}
+                  />
+                </>
               )}
             </div>
           </div>
