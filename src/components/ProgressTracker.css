@@ -73,18 +73,21 @@
 @media (max-width: 768px) {
   .voice-toggle-progress {
     top: 5px;
+    left: 50%;
+    transform: translateX(-50%);
     width: 35px;
     height: 35px;
-    fontSize: 16px;
+    font-size: 16px;
   }
   
   .progress-list {
     padding-top: 50px;
+    padding-bottom: 50px;
   }
   
   .progress-list::before {
     top: 50px;
-    height: calc(100% - 60px);
+    height: calc(100% - 100px);
   }
 }
 
@@ -96,7 +99,8 @@
   justify-content: flex-start;
   align-items: center;
   position: relative;
-  padding-top: 60px; /* Increased to make room for voice button */
+  padding-top: 60px; /* Space for voice button at top */
+  padding-bottom: 50px; /* Space for reset button at bottom */
 }
 
 /* Vertical progress line starting from below voice button */
@@ -105,7 +109,7 @@
   position: absolute;
   left: 50%;
   top: 60px; /* Start below voice button */
-  height: calc(100% - 80px); /* Adjusted for button space */
+  height: calc(100% - 110px); /* Adjusted for both button spaces */
   width: 3px;
   background: linear-gradient(to bottom, 
     #4ade80 0%, 
@@ -417,4 +421,49 @@
 
 .progress-item.unlocked .progress-shape.star {
   background-color: #f59e0b;
+}
+
+/* Reset Progress Button Styles */
+.reset-progress-button {
+  position: absolute !important;
+  bottom: 10px !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  padding: 8px 12px !important;
+  border-radius: 6px !important;
+  border: none !important;
+  background: linear-gradient(135deg, #ef4444, #dc2626) !important;
+  color: white !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 4px !important;
+  transition: all 0.3s ease !important;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3) !important;
+  z-index: 10 !important;
+}
+
+.reset-progress-button:hover {
+  background: linear-gradient(135deg, #dc2626, #b91c1c) !important;
+  box-shadow: 0 6px 16px rgba(239, 68, 68, 0.4) !important;
+  transform: translateX(-50%) translateY(-2px) !important;
+}
+
+.reset-progress-button:active {
+  transform: translateX(-50%) translateY(0px) !important;
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.4) !important;
+}
+
+/* Mobile Responsive Reset Button */
+@media (max-width: 768px) {
+  .reset-progress-button {
+    bottom: 5px !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    padding: 6px 10px !important;
+    font-size: 11px !important;
+  }
 }

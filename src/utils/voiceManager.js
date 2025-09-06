@@ -75,6 +75,7 @@ class VoiceManager {
     
     // If only one voice, return it
     if (voices.length === 1) {
+      console.log(`🎵 Single voice for ${category}, returning it`);
       return voices[0];
     }
     
@@ -85,7 +86,8 @@ class VoiceManager {
     // Move to next voice (cycle through all voices)
     this.voiceIndex[category] = (currentIndex + 1) % voices.length;
     
-    console.log(`🎵 Selected ${category} voice ${currentIndex + 1}/${voices.length}`);
+    console.log(`🎵 Selected ${category} voice ${currentIndex + 1}/${voices.length} (next will be ${this.voiceIndex[category] + 1})`);
+    console.log(`🎵 Voice file path:`, selectedVoice);
     
     return selectedVoice;
   }
@@ -298,9 +300,48 @@ class VoiceManager {
     };
   }
 
-  // Get available voice categories
-  getAvailableCategories() {
-    return Object.keys(this.voiceCategories);
+  // Debug method to check voice alternation status
+  getVoiceAlternationStatus() {
+    const status = {};
+    Object.keys(this.voiceCategories).forEach(category => {
+      const voices = this.voiceCategories[category];
+      const currentIndex = this.voiceIndex[category] || 0;
+      status[category] = {
+        totalVoices: voices.length,
+        currentIndex: currentIndex,
+        nextVoice: currentIndex + 1 <= voices.length ? currentIndex + 1 : 1
+      };
+    });
+    return status;
+  }
+
+  // Test method to cycle through all voices in a category
+  async testCategoryAlternation(category, cycles = 3) {
+    console.log(`🎵 Testing ${category} alternation for ${cycles} cycles...`);
+    
+    const voices = this.voiceCategories[category];
+    if (!voices) {
+      console.error(`❌ Category ${category} not found`);
+      return;
+    }
+    
+    const totalTests = voices.length * cycles;
+    
+    for (let i = 0; i < totalTests; i++) {
+      console.log(`\n🎵 Test ${i + 1}/${totalTests} for ${category}:`);
+      
+      const voiceFile = this.getNextVoice(category);
+      if (voiceFile) {
+        console.log(`✅ Got voice file: ${voiceFile}`);
+        // Simulate playing without actual audio
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      } else {
+        console.error(`❌ Failed to get voice for ${category}`);
+      }
+    }
+    
+    console.log(`🎵 ${category} alternation test completed!`);
+    console.log(`📊 Final status:`, this.getVoiceAlternationStatus()[category]);
   }
 
   // Reset startup voice flag (for testing or manual reset)
@@ -362,5 +403,7 @@ export const {
   stopCurrentAudio,
   getPlayingStatus,
   resetStartupVoiceFlag,
-  testVoiceSystem
+  testVoiceSystem,
+  getVoiceAlternationStatus,
+  testCategoryAlternation
 } = voiceManager;

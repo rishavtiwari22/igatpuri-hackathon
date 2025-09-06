@@ -1,5 +1,58 @@
-// imageComparison.js - Pure MS-SSIM Image Comparison Utility
-import { ssim } from "ssim.js";
+// imageComparison.js - Enhanced MS-SSIM Image Comparison Utility
+
+// SSIM library loading with fallback
+let ssimLib = null;
+
+const loadSSIM = async () => {
+  if (ssimLib) return ssimLib;
+  
+  try {
+    const ssimModule = await import("ssim.js");
+    ssimLib = ssimModule.ssim || ssimModule.default;
+    console.log("✅ SSIM library loaded successfully");
+    return ssimLib;
+  } catch (error) {
+    console.warn("⚠️ SSIM library failed to load, using fallback method:", error);
+    return null;
+  }
+};
+
+// Simple pixel-based comparison fallback
+const simplePixelComparison = (imageData1, imageData2) => {
+  console.log("🔄 Using simple pixel comparison fallback");
+  
+  if (imageData1.width !== imageData2.width || imageData1.height !== imageData2.height) {
+    console.warn("Images have different dimensions");
+    return 0.1; // Low score for different dimensions
+  }
+  
+  const data1 = imageData1.data;
+  const data2 = imageData2.data;
+  let totalDiff = 0;
+  let totalPixels = 0;
+  
+  for (let i = 0; i < data1.length; i += 4) {
+    const r1 = data1[i], g1 = data1[i + 1], b1 = data1[i + 2];
+    const r2 = data2[i], g2 = data2[i + 1], b2 = data2[i + 2];
+    
+    // Calculate RGB difference
+    const diff = Math.sqrt(
+      Math.pow(r1 - r2, 2) + 
+      Math.pow(g1 - g2, 2) + 
+      Math.pow(b1 - b2, 2)
+    );
+    
+    totalDiff += diff;
+    totalPixels++;
+  }
+  
+  const avgDiff = totalDiff / totalPixels;
+  const maxDiff = Math.sqrt(3 * 255 * 255); // Max possible RGB difference
+  const similarity = 1 - (avgDiff / maxDiff);
+  
+  console.log(`Simple comparison result: ${(similarity * 100).toFixed(1)}%`);
+  return Math.max(0, Math.min(1, similarity));
+};
 
 // Convert image to ImageData for SSIM processing with enhanced error handling
 const toImageData = (img, w, h) => {
@@ -46,75 +99,66 @@ const toImageData = (img, w, h) => {
   }
 };
 
-// Load image with enhanced error handling (no CORS proxy needed for image.pollinations.ai)
+// Load image with enhanced error handling and retry mechanism
 const loadImage = (src) => {
   return new Promise((resolve, reject) => {
-    console.log(`Attempting to load image: ${src}`);
+    console.log(`📸 Attempting to load image: ${typeof src === 'string' ? src.substring(0, 100) : src}`);
+    
+    // Handle different input types
+    if (!src) {
+      reject(new Error('No image source provided'));
+      return;
+    }
     
     const img = new Image();
     
     // Set crossOrigin for external images
-    if (src.startsWith('http') || src.startsWith('//')) {
+    if (typeof src === 'string' && (src.startsWith('http') || src.startsWith('//'))) {
       img.crossOrigin = "anonymous";
     }
     
-    img.onload = () => {
-      console.log(`Image loaded successfully: ${src} (${img.width}x${img.height})`);
-      resolve(img);
+    let loadAttempts = 0;
+    const maxAttempts = 3;
+    
+    const attemptLoad = () => {
+      loadAttempts++;
+      console.log(`📸 Load attempt ${loadAttempts}/${maxAttempts} for image`);
+      
+      img.onload = () => {
+        console.log(`✅ Image loaded successfully on attempt ${loadAttempts}: ${img.width}x${img.height}`);
+        resolve(img);
+      };
+      
+      img.onerror = (error) => {
+        console.warn(`❌ Failed to load image on attempt ${loadAttempts}:`, error);
+        
+        if (loadAttempts < maxAttempts) {
+          // Try different approaches
+          if (loadAttempts === 2) {
+            // Second attempt: remove crossOrigin
+            img.crossOrigin = null;
+            console.log(`🔄 Retry without CORS (attempt ${loadAttempts + 1})`);
+            setTimeout(attemptLoad, 500);
+          } else {
+            // Third attempt: different timeout
+            setTimeout(attemptLoad, 1000);
+          }
+        } else {
+          console.error(`💥 All loading attempts failed for image after ${maxAttempts} tries`);
+          reject(new Error(`Failed to load image after ${maxAttempts} attempts: ${error.message || 'Unknown error'}`));
+        }
+      };
+      
+      // Set the source to trigger loading
+      img.src = src;
     };
     
-    img.onerror = (error) => {
-      console.warn(`Failed to load image: ${src}`, error);
-      // Try without crossOrigin as fallback
-      const imgRetry = new Image();
-      imgRetry.onload = () => {
-        console.log(`Image loaded successfully without CORS: ${src} (${imgRetry.width}x${imgRetry.height})`);
-        resolve(imgRetry);
-      };
-      imgRetry.onerror = (retryError) => {
-        console.error(`All loading attempts failed for: ${src}`, retryError);
-        // Create a fallback image instead of rejecting
-        createFallbackImage();
-      };
-      imgRetry.src = src;
-    };
-    
-    // Fallback: Create a simple colored canvas as placeholder
-    const createFallbackImage = () => {
-      console.log(`Creating fallback image for: ${src}`);
-      const canvas = document.createElement('canvas');
-      canvas.width = 256;
-      canvas.height = 256;
-      const ctx = canvas.getContext('2d');
-      
-      // Create a gradient pattern as fallback
-      const gradient = ctx.createLinearGradient(0, 0, 256, 256);
-      gradient.addColorStop(0, '#ff6b6b');
-      gradient.addColorStop(1, '#4ecdc4');
-      
-      ctx.fillStyle = gradient;
-      ctx.fillRect(0, 0, 256, 256);
-      
-      // Add some pattern
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
-      for (let i = 0; i < 10; i++) {
-        ctx.fillRect(i * 30, i * 30, 20, 20);
-      }
-      
-      // Convert canvas to image
-      const fallbackImg = new Image();
-      fallbackImg.onload = () => {
-        console.log(`Fallback image created successfully`);
-        resolve(fallbackImg);
-      };
-      fallbackImg.src = canvas.toDataURL();
-    };
-    
-    img.src = src;
+    // Start the first attempt
+    attemptLoad();
   });
 };
 
-// Simple fallback SSIM implementation for when ssim.js fails
+// Enhanced fallback SSIM implementation for when ssim.js fails
 const fallbackSSIM = (imageDataA, imageDataB) => {
   try {
     const dataA = imageDataA.data;
@@ -198,19 +242,19 @@ const computePixelSimilarity = (imageDataA, imageDataB) => {
   }
 };
 
-// Color histogram comparison for similar color distributions
+// Color histogram comparison for similar color distributions with enhanced accuracy
 const computeColorHistogramSimilarity = (imageDataA, imageDataB) => {
   try {
     const dataA = imageDataA.data;
     const dataB = imageDataB.data;
     
-    // Create color histograms (16 bins per channel for efficiency)
-    const bins = 16;
+    // Create color histograms (32 bins per channel for better accuracy)
+    const bins = 32;
     const histA = new Array(bins * 3).fill(0);
     const histB = new Array(bins * 3).fill(0);
     
     for (let i = 0; i < dataA.length; i += 4) {
-      // Quantize color values to histogram bins
+      // Quantize color values to histogram bins with better precision
       const rBinA = Math.floor((dataA[i] / 255) * (bins - 1));
       const gBinA = Math.floor((dataA[i + 1] / 255) * (bins - 1));
       const bBinA = Math.floor((dataA[i + 2] / 255) * (bins - 1));
@@ -235,20 +279,30 @@ const computeColorHistogramSimilarity = (imageDataA, imageDataB) => {
       histB[i] /= totalPixels;
     }
     
-    // Calculate histogram intersection (similarity)
+    // Calculate histogram intersection (similarity) with enhanced method
     let intersection = 0;
+    let chiSquare = 0;
+    
     for (let i = 0; i < histA.length; i++) {
       intersection += Math.min(histA[i], histB[i]);
+      // Add chi-square distance for additional accuracy
+      const diff = histA[i] - histB[i];
+      const sum = histA[i] + histB[i];
+      if (sum > 0) {
+        chiSquare += (diff * diff) / sum;
+      }
     }
     
-    return intersection;
+    // Combine intersection and chi-square for better accuracy
+    const chiSquareSimilarity = 1 / (1 + chiSquare);
+    return (intersection * 0.7 + chiSquareSimilarity * 0.3);
   } catch (error) {
     console.error('Color histogram similarity error:', error);
     return 0;
   }
 };
 
-// Edge detection for structural similarity
+// Edge detection for structural similarity with enhanced algorithm
 const computeEdgeSimilarity = (imageDataA, imageDataB) => {
   try {
     const dataA = imageDataA.data;
@@ -256,60 +310,94 @@ const computeEdgeSimilarity = (imageDataA, imageDataB) => {
     const width = imageDataA.width;
     const height = imageDataA.height;
     
-    // Simple edge detection using gradient magnitude
-    const getEdgeStrength = (data, x, y, w) => {
-      if (x <= 0 || x >= w - 1 || y <= 0 || y >= height - 1) return 0;
+    // Enhanced edge detection using Sobel operator
+    const getSobelEdgeStrength = (data, x, y, w) => {
+      if (x <= 1 || x >= w - 2 || y <= 1 || y >= height - 2) return 0;
       
-      const idx = (y * w + x) * 4;
-      const idxRight = ((y * w) + (x + 1)) * 4;
-      const idxDown = (((y + 1) * w) + x) * 4;
+      // Sobel kernels
+      const Gx = [
+        [-1, 0, 1],
+        [-2, 0, 2],
+        [-1, 0, 1]
+      ];
       
-      // Calculate luminance
-      const current = (data[idx] + data[idx + 1] + data[idx + 2]) / 3;
-      const right = (data[idxRight] + data[idxRight + 1] + data[idxRight + 2]) / 3;
-      const down = (data[idxDown] + data[idxDown + 1] + data[idxDown + 2]) / 3;
+      const Gy = [
+        [-1, -2, -1],
+        [ 0,  0,  0],
+        [ 1,  2,  1]
+      ];
       
-      const gx = right - current;
-      const gy = down - current;
+      let gx = 0;
+      let gy = 0;
       
+      // Apply Sobel operator
+      for (let ky = -1; ky <= 1; ky++) {
+        for (let kx = -1; kx <= 1; kx++) {
+          const pixelX = x + kx;
+          const pixelY = y + ky;
+          const idx = (pixelY * w + pixelX) * 4;
+          
+          // Calculate luminance
+          const lum = 0.299 * data[idx] + 0.587 * data[idx + 1] + 0.114 * data[idx + 2];
+          
+          gx += Gx[ky + 1][kx + 1] * lum;
+          gy += Gy[ky + 1][kx + 1] * lum;
+        }
+      }
+      
+      // Gradient magnitude
       return Math.sqrt(gx * gx + gy * gy);
     };
     
     let totalEdgeDiff = 0;
     let maxPossibleDiff = 0;
     let edgePixels = 0;
+    let edgeSimilaritySum = 0;
     
-    for (let y = 1; y < height - 1; y++) {
-      for (let x = 1; x < width - 1; x++) {
-        const edgeA = getEdgeStrength(dataA, x, y, width);
-        const edgeB = getEdgeStrength(dataB, x, y, width);
+    // Process edges with better sampling
+    for (let y = 2; y < height - 2; y += 2) {
+      for (let x = 2; x < width - 2; x += 2) {
+        const edgeA = getSobelEdgeStrength(dataA, x, y, width);
+        const edgeB = getSobelEdgeStrength(dataB, x, y, width);
         
-        totalEdgeDiff += Math.abs(edgeA - edgeB);
+        const diff = Math.abs(edgeA - edgeB);
+        totalEdgeDiff += diff;
         maxPossibleDiff += 255; // Maximum possible edge difference
         edgePixels++;
+        
+        // Calculate local similarity
+        if (edgeA + edgeB > 0) {
+          const localSimilarity = 1 - (diff / Math.max(edgeA, edgeB));
+          edgeSimilaritySum += Math.max(0, localSimilarity);
+        }
       }
     }
     
     if (edgePixels === 0) return 0;
     
-    const similarity = 1 - (totalEdgeDiff / maxPossibleDiff);
-    return Math.max(0, Math.min(1, similarity));
+    // Combine multiple edge similarity measures
+    const basicSimilarity = 1 - (totalEdgeDiff / maxPossibleDiff);
+    const normalizedSimilarity = edgeSimilaritySum / edgePixels;
+    
+    // Weighted combination for better accuracy
+    return (basicSimilarity * 0.4 + normalizedSimilarity * 0.6);
   } catch (error) {
     console.error('Edge similarity error:', error);
     return 0;
   }
 };
 
-// Semantic content analysis for similar subjects
+// Semantic content analysis for similar subjects with enhanced features
 const computeSemanticSimilarity = (imageDataA, imageDataB) => {
   try {
     const dataA = imageDataA.data;
     const dataB = imageDataB.data;
     
-    // Analyze dominant colors and patterns
+    // Enhanced image analysis with multiple features
     const analyzeImage = (data) => {
       const colors = { red: 0, green: 0, blue: 0 };
       const brightness = [];
+      const saturation = [];
       let totalPixels = 0;
       
       for (let i = 0; i < data.length; i += 4) {
@@ -321,8 +409,16 @@ const computeSemanticSimilarity = (imageDataA, imageDataB) => {
         colors.green += g;
         colors.blue += b;
         
+        // Calculate luminance (perceived brightness)
         const lum = 0.299 * r + 0.587 * g + 0.114 * b;
         brightness.push(lum);
+        
+        // Calculate saturation
+        const max = Math.max(r, g, b);
+        const min = Math.min(r, g, b);
+        const sat = max === 0 ? 0 : (max - min) / max;
+        saturation.push(sat);
+        
         totalPixels++;
       }
       
@@ -331,18 +427,30 @@ const computeSemanticSimilarity = (imageDataA, imageDataB) => {
       colors.green /= totalPixels;
       colors.blue /= totalPixels;
       
-      // Calculate brightness statistics
+      // Calculate statistics
       brightness.sort((a, b) => a - b);
+      saturation.sort((a, b) => a - b);
+      
       const brightnessMedian = brightness[Math.floor(brightness.length / 2)];
       const brightnessAvg = brightness.reduce((a, b) => a + b, 0) / brightness.length;
+      const brightnessStd = Math.sqrt(
+        brightness.reduce((a, b) => a + Math.pow(b - brightnessAvg, 2), 0) / brightness.length
+      );
       
-      return { colors, brightnessMedian, brightnessAvg };
+      const saturationMedian = saturation[Math.floor(saturation.length / 2)];
+      const saturationAvg = saturation.reduce((a, b) => a + b, 0) / saturation.length;
+      
+      return { 
+        colors, 
+        brightness: { avg: brightnessAvg, median: brightnessMedian, std: brightnessStd },
+        saturation: { avg: saturationAvg, median: saturationMedian }
+      };
     };
     
     const analysisA = analyzeImage(dataA);
     const analysisB = analyzeImage(dataB);
     
-    // Compare color profiles
+    // Compare color profiles with enhanced method
     const colorSimilarity = 1 - (
       Math.abs(analysisA.colors.red - analysisB.colors.red) +
       Math.abs(analysisA.colors.green - analysisB.colors.green) +
@@ -350,10 +458,16 @@ const computeSemanticSimilarity = (imageDataA, imageDataB) => {
     ) / (255 * 3);
     
     // Compare brightness profiles
-    const brightnessSimilarity = 1 - Math.abs(analysisA.brightnessAvg - analysisB.brightnessAvg) / 255;
+    const brightnessSimilarity = 1 - (
+      Math.abs(analysisA.brightness.avg - analysisB.brightness.avg) +
+      Math.abs(analysisA.brightness.std - analysisB.brightness.std)
+    ) / (255 * 2);
+    
+    // Compare saturation profiles
+    const saturationSimilarity = 1 - Math.abs(analysisA.saturation.avg - analysisB.saturation.avg);
     
     // Weighted combination
-    return (colorSimilarity * 0.6 + brightnessSimilarity * 0.4);
+    return (colorSimilarity * 0.5 + brightnessSimilarity * 0.3 + saturationSimilarity * 0.2);
   } catch (error) {
     console.error('Semantic similarity error:', error);
     return 0;
@@ -361,11 +475,25 @@ const computeSemanticSimilarity = (imageDataA, imageDataB) => {
 };
 
 // Multi-Scale SSIM computation using ssim.js with proper MS-SSIM implementation
-const computeMultiScaleSSIM = (imageDataA, imageDataB, numScales = 5) => {
+const computeMultiScaleSSIM = async (imageDataA, imageDataB, numScales = 5) => {
   try {
     console.log('Computing Multi-Scale SSIM for images:', 
       `${imageDataA.width}x${imageDataA.height}`, 'vs', 
       `${imageDataB.width}x${imageDataB.height}`);
+    
+    // Load SSIM library
+    const ssim = await loadSSIM();
+    
+    // If SSIM library failed to load, use fallback
+    if (!ssim) {
+      console.log('SSIM library not available, using pixel comparison fallback');
+      const fallbackScore = simplePixelComparison(imageDataA, imageDataB);
+      return {
+        ms_ssim: fallbackScore,
+        per_scale_scores: [fallbackScore],
+        method: 'pixel_fallback'
+      };
+    }
     
     // Validate dimensions
     if (imageDataA.width !== imageDataB.width || imageDataA.height !== imageDataB.height) {
@@ -431,8 +559,9 @@ const computeMultiScaleSSIM = (imageDataA, imageDataB, numScales = 5) => {
             ssimScore = 0;
           }
         } catch (ssimError) {
-          console.warn(`SSIM failed at scale ${scale + 1}, using fallback:`, ssimError);
-          ssimScore = fallbackSSIM(scaledDataA, scaledDataB);
+          console.warn(`SSIM failed at scale ${scale + 1}, using pixel fallback:`, ssimError);
+          // Use pixel comparison as fallback for this scale
+          ssimScore = simplePixelComparison(scaledDataA, scaledDataB);
         }
         
         ssimScore = Math.max(0, Math.min(1, ssimScore));
@@ -500,16 +629,28 @@ const computeMultiScaleSSIM = (imageDataA, imageDataB, numScales = 5) => {
 
 // Enhanced MS-SSIM with Structure, Color, and Shape Priority
 export const computeMSSSIM = async (srcA, srcB, numScales = 5) => {
+  console.log(`🎯 Starting enhanced MS-SSIM based comparison`);
+  console.log(`Source A: ${typeof srcA}, Source B: ${typeof srcB}`);
+  console.log(`Source A value:`, srcA);
+  console.log(`Source B value:`, srcB);
+  
   try {
-    console.log(`Starting MS-SSIM based comparison: ${srcA} vs ${srcB}`);
+    // Enhanced validation
+    if (!srcA || !srcB) {
+      throw new Error('Missing source images for comparison');
+    }
     
-    // Load both images using the simplified loadImage function
+    console.log(`🎯 Loading images for comparison...`);
+    
+    // Load both images using the enhanced loadImage function
     const [imgA, imgB] = await Promise.all([
       loadImage(srcA), 
       loadImage(srcB)
     ]);
     
-    console.log(`Images loaded - A: ${imgA.width}x${imgA.height}, B: ${imgB.width}x${imgB.height}`);
+    console.log(`✅ Images loaded successfully`);
+    console.log(`Image A: ${imgA.width}x${imgA.height}`);
+    console.log(`Image B: ${imgB.width}x${imgB.height}`);
     
     // Use smaller dimension as base for scaling
     const baseWidth = Math.min(imgA.width, imgB.width);
@@ -522,12 +663,16 @@ export const computeMSSSIM = async (srcA, srcB, numScales = 5) => {
     
     // Convert to ImageData for analysis (use optimal size for MS-SSIM)
     const standardSize = Math.min(512, Math.max(baseWidth, baseHeight));
+    console.log(`🔄 Converting images to ImageData at ${standardSize}x${standardSize}...`);
+    
     const imageDataA = toImageData(imgA, standardSize, standardSize);
     const imageDataB = toImageData(imgB, standardSize, standardSize);
     
-    // 1. PRIMARY: Multi-Scale SSIM (Structure Priority) - 60% weight
+    console.log(`✅ ImageData conversion completed`);
+    
+    // 1. PRIMARY: Multi-Scale SSIM (Structure Priority) - 50% weight
     console.log('Computing Multi-Scale SSIM (Structure)...');
-    const msssimResult = computeMultiScaleSSIM(imageDataA, imageDataB, numScales);
+    const msssimResult = await computeMultiScaleSSIM(imageDataA, imageDataB, numScales);
     const structureScore = msssimResult.ms_ssim;
     console.log(`MS-SSIM Structure Score: ${structureScore}`);
     
@@ -541,11 +686,23 @@ export const computeMSSSIM = async (srcA, srcB, numScales = 5) => {
     const shapeScore = computeEdgeSimilarity(imageDataA, imageDataB);
     console.log(`Shape/Edge Similarity Score: ${shapeScore}`);
     
+    // 4. QUATERNARY: Semantic Content Analysis - 10% weight
+    console.log('Computing Semantic Similarity...');
+    const semanticScore = computeSemanticSimilarity(imageDataA, imageDataB);
+    console.log(`Semantic Similarity Score: ${semanticScore}`);
+    
+    // 5. NEW: Pixel-based similarity for fine-grained comparison - 5% weight
+    console.log('Computing Pixel Similarity...');
+    const pixelScore = computePixelSimilarity(imageDataA, imageDataB);
+    console.log(`Pixel Similarity Score: ${pixelScore}`);
+    
     // Enhanced weighting system prioritizing structure, color, and shape
     const weights = {
-      structure: 0.60,  // MS-SSIM (structure is most important)
+      structure: 0.45,  // MS-SSIM (structure is most important)
       color: 0.25,      // Color distribution 
-      shape: 0.15       // Edge/shape patterns
+      shape: 0.15,      // Edge/shape patterns
+      semantic: 0.10,   // Semantic content analysis
+      pixel: 0.05       // Fine-grained pixel comparison
     };
     
     console.log('Using weights:', weights);
@@ -554,27 +711,41 @@ export const computeMSSSIM = async (srcA, srcB, numScales = 5) => {
     const combinedScore = 
       structureScore * weights.structure +
       colorScore * weights.color +
-      shapeScore * weights.shape;
+      shapeScore * weights.shape +
+      semanticScore * weights.semantic +
+      pixelScore * weights.pixel;
     
     // Apply MS-SSIM based enhancement
     let finalScore = combinedScore;
     
     // If MS-SSIM shows good structure similarity, boost the overall score
     if (structureScore > 0.7) {
-      finalScore = Math.min(1.0, combinedScore * 1.1);
+      finalScore = Math.min(1.0, combinedScore * 1.2); // Increased boost
       console.log('Applied MS-SSIM structure boost');
     }
     
     // If color and shape align well with structure, apply additional boost
     if (structureScore > 0.5 && colorScore > 0.6 && shapeScore > 0.5) {
-      finalScore = Math.min(1.0, finalScore * 1.05);
+      finalScore = Math.min(1.0, finalScore * 1.15); // Increased boost
       console.log('Applied multi-metric alignment boost');
     }
     
     // MS-SSIM quality adjustment - prevent very low scores when structure is decent
     if (structureScore > 0.4 && finalScore < 0.3) {
-      finalScore = Math.max(finalScore, structureScore * 0.75);
+      finalScore = Math.max(finalScore, structureScore * 0.85); // Increased floor
       console.log('Applied MS-SSIM quality floor adjustment');
+    }
+    
+    // Additional enhancement for high semantic similarity
+    if (semanticScore > 0.7 && structureScore > 0.4) {
+      finalScore = Math.min(1.0, finalScore * 1.1);
+      console.log('Applied semantic enhancement boost');
+    }
+    
+    // Additional enhancement for high pixel similarity (fine details)
+    if (pixelScore > 0.8 && structureScore > 0.5) {
+      finalScore = Math.min(1.0, finalScore * 1.05);
+      console.log('Applied pixel enhancement boost');
     }
     
     const percentage = Math.round(finalScore * 10000) / 100;
@@ -583,9 +754,20 @@ export const computeMSSSIM = async (srcA, srcB, numScales = 5) => {
       ms_ssim: finalScore,
       percentage: percentage,
       detailed_scores: {
+        // Map to the expected property names for UI compatibility
+        structural: structureScore, // 0-1 scale for FeedbackComponent
+        edges: shapeScore, // Use shape score for edges
+        colors: colorScore,
+        hog_features: semanticScore, // Use semantic for HOG features
+        histogram: colorScore, // Use color score for histogram
+        hsv_similarity: pixelScore, // Use pixel score for HSV
+        
+        // Keep original detailed scores for analysis
         structure: Math.round(structureScore * 100),
         color: Math.round(colorScore * 100),
         shape: Math.round(shapeScore * 100),
+        semantic: Math.round(semanticScore * 100),
+        pixel: Math.round(pixelScore * 100),
         combined: Math.round(combinedScore * 100),
         final: Math.round(finalScore * 100)
       },
@@ -596,23 +778,54 @@ export const computeMSSSIM = async (srcA, srcB, numScales = 5) => {
         structure_quality: structureScore > 0.7 ? 'high' : structureScore > 0.4 ? 'medium' : 'low',
         color_alignment: colorScore > 0.6 ? 'good' : colorScore > 0.4 ? 'fair' : 'poor',
         shape_alignment: shapeScore > 0.5 ? 'good' : shapeScore > 0.3 ? 'fair' : 'poor',
+        semantic_alignment: semanticScore > 0.6 ? 'good' : semanticScore > 0.4 ? 'fair' : 'poor',
+        pixel_alignment: pixelScore > 0.7 ? 'high' : pixelScore > 0.5 ? 'medium' : 'low',
         enhancement_applied: finalScore > combinedScore
       },
       base_dimensions: `${standardSize}x${standardSize}`,
-      algorithm: 'Enhanced MS-SSIM with Structure Priority'
+      algorithm: 'Enhanced MS-SSIM with Multi-Metric Analysis v2.2'
     };
     
-    console.log('MS-SSIM based computation completed:', result);
+    console.log('✅ Enhanced MS-SSIM based computation completed successfully');
+    console.log('Final result:', {
+      percentage: result.percentage,
+      method: 'local_ms_ssim_only',
+      structure: structureScore,
+      color: colorScore,
+      shape: shapeScore
+    });
+    
     return result;
     
   } catch (error) {
-    console.error('Error in MS-SSIM computation:', error);
+    console.error('❌ Error in MS-SSIM computation:', error);
+    console.error('Error details:', {
+      message: error.message,
+      stack: error.stack,
+      sources: { srcA, srcB }
+    });
+    
+    // Return a more detailed error response
     return {
+      error: `MS-SSIM computation failed: ${error.message}`,
       ms_ssim: 0,
       percentage: 0,
-      detailed_scores: {},
-      error: error.message,
-      algorithm: 'Enhanced MS-SSIM (Failed)'
+      detailed_scores: {
+        structural: 0,
+        edges: 0, 
+        colors: 0,
+        hog_features: 0,
+        histogram: 0,
+        hsv_similarity: 0
+      },
+      algorithm: 'Enhanced MS-SSIM (Failed)',
+      failure_reason: error.message,
+      debug_info: {
+        srcA_type: typeof srcA,
+        srcB_type: typeof srcB,
+        srcA_value: String(srcA).substring(0, 100),
+        srcB_value: String(srcB).substring(0, 100)
+      }
     };
   }
 };
@@ -635,6 +848,8 @@ export const formatDetailedScores = (scores) => {
     'Structure (MS-SSIM)': `${scores.structure}%`,
     'Color Distribution': `${scores.color}%`,
     'Shape/Edge Patterns': `${scores.shape}%`,
+    'Semantic Content': `${scores.semantic}%`,
+    'Pixel Similarity': `${scores.pixel}%`,
     'Combined Score': `${scores.combined}%`,
     'Final Enhanced': `${scores.final}%`
   };
