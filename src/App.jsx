@@ -1,13 +1,67 @@
 // App.jsx
 import React from "react";
+import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import HangingShapes from "./components/HangingShapes";
+import Login from "./components/Login";
+import FirebaseSetupAlert from "./components/FirebaseSetupAlert";
 import "./App.css";
 
-function App() {
+// Main App Content Component
+const AppContent = () => {
+  const { user, loading } = useAuth();
+
+  // Show loading screen while checking auth state
+  if (loading) {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        fontFamily: 'Poppins, sans-serif'
+      }}>
+        <div style={{
+          textAlign: 'center',
+          color: 'white'
+        }}>
+          <div style={{
+            width: '50px',
+            height: '50px',
+            border: '4px solid transparent',
+            borderTop: '4px solid white',
+            borderRadius: '50%',
+            animation: 'spin 1s linear infinite',
+            margin: '0 auto 20px'
+          }} />
+          <div style={{ fontSize: '1.2rem', fontWeight: '600' }}>
+            Loading AI Art Challenge...
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show login if user is not authenticated
+  if (!user) {
+    return <Login />;
+  }
+
+  // Show main app if user is authenticated
   return (
     <div className="app">
+      <FirebaseSetupAlert />
       <HangingShapes />
     </div>
+  );
+};
+
+// Main App Component with Auth Provider
+function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
   );
 }
 

@@ -15,7 +15,7 @@ const ProgressTracker = ({
   progressData = {},
   onShapeClick,
   selectedImage,
-  onResetProgress
+  onShowUserProfile
 }) => {
   const progressListRef = useRef(null);
 
@@ -71,37 +71,17 @@ const ProgressTracker = ({
         {isVoicePlaying ? '📢' : (voiceEnabled ? '🎤' : '🔇')}
       </motion.button>
 
-      {/* Reset Progress Button */}
-      {onResetProgress && (
+      {/* User Profile Button */}
+      {onShowUserProfile && (
         <motion.button
-          onClick={onResetProgress}
-          className="reset-progress-button"
+          onClick={onShowUserProfile}
+          className="user-profile-button"
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
-          title="Reset all progress"
-          style={{
-            position: 'absolute',
-            bottom: '10px',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            padding: '8px 12px',
-            borderRadius: '6px',
-            border: 'none',
-            background: 'linear-gradient(135deg, #ef4444, #dc2626)',
-            color: 'white',
-            fontSize: '12px',
-            fontWeight: '600',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '4px',
-            transition: 'all 0.3s ease',
-            boxShadow: '0 4px 12px rgba(239, 68, 68, 0.3)',
-            zIndex: 10
-          }}
+          title="View user profile and stats"
         >
-          🔄 Reset
+          <span>👤</span>
+          <span>Profile</span>
         </motion.button>
       )}
       

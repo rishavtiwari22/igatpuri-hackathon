@@ -13,6 +13,9 @@ import FeedbackComponent from "./FeedbackComponent";
 import handleComparison from "./Comparison_req";
 import { playClickSound, playGenerationStartSound } from "./Sound_Generation";
 import voiceManager from "../utils/voiceManager";
+import { useAuth } from "../contexts/AuthContext";
+import { useFirebaseProgress } from "../hooks/useFirebaseProgress";
+import UserProfile from "./UserProfile";
 
 const shapes = [
   { type: "circle", left: "10%", rope: "rope-1", image: image1, name: "Car" },
@@ -25,6 +28,18 @@ const shapes = [
 
 
 export default function HangingShapes() {
+  const { user } = useAuth();
+  const { 
+    progressData, 
+    unlockedShapes, 
+    updateProgressData, 
+    updateUnlockedShapes, 
+    isLoading: isProgressLoading,
+    isSaving: isProgressSaving,
+    syncError,
+    lastSyncTime
+  } = useFirebaseProgress();
+
   const [selectedImage, setSelectedImage] = useState(null);
   const [AIGeneratedimg, setAIGeneratedimg] = useState(null);
   const [prompt, setPrompt] = useState("");
@@ -36,67 +51,6 @@ export default function HangingShapes() {
   const [voiceEnabled, setVoiceEnabled] = useState(true); // Voice feedback preference
   const [isVoicePlaying, setIsVoicePlaying] = useState(false); // Voice status
   const [isImageLoading, setIsImageLoading] = useState(false); // Image loading status
-  // Enhanced progress tracking with scores and timestamps - INITIALIZE FIRST
-  const [progressData, setProgressData] = useState(() => {
-    // For testing - uncomment the next line to reset progress
-    // localStorage.removeItem("challengeProgress");
-    const savedData = localStorage.getItem("challengeProgress");
-    const initialProgress = savedData ? JSON.parse(savedData) : {};
-    console.log("🔄 Initializing progressData from localStorage:", Object.keys(initialProgress));
-    return initialProgress;
-  });
-
-  const [unlockedShapes, setUnlockedShapes] = useState(() => {
-    // For testing - uncomment the next line to reset progress
-    // localStorage.removeItem("unlockedShapes");
-    // localStorage.removeItem("challengeProgress");
-    
-    // Get both stored values
-    const savedProgress = localStorage.getItem("challengeProgress");
-    const savedUnlocked = localStorage.getItem("unlockedShapes");
-    
-    let reconstructedUnlocked = [0]; // Always start with first challenge unlocked
-    
-    if (savedProgress) {
-      const progressData = JSON.parse(savedProgress);
-      console.log("🔍 Reconstructing unlocked shapes from progress data:", progressData);
-      
-      // Reconstruct unlocked shapes from completed challenges
-      for (const [challengeIndex, data] of Object.entries(progressData)) {
-        const index = parseInt(challengeIndex);
-        if (data.completed && !reconstructedUnlocked.includes(index)) {
-          reconstructedUnlocked.push(index);
-          
-          // If this challenge is completed, also unlock the next one
-          const nextIndex = index + 1;
-          if (nextIndex < shapes.length && !reconstructedUnlocked.includes(nextIndex)) {
-            reconstructedUnlocked.push(nextIndex);
-            console.log(`✅ Challenge ${index} completed - unlocking next challenge ${nextIndex}`);
-          }
-        }
-      }
-      
-      // Sort the unlocked array
-      reconstructedUnlocked.sort((a, b) => a - b);
-      console.log("🔄 Reconstructed unlocked shapes from progress:", reconstructedUnlocked);
-    }
-    
-    // Use saved unlocked shapes if available, otherwise use reconstructed
-    let finalUnlocked = reconstructedUnlocked;
-    if (savedUnlocked) {
-      const parsedSaved = JSON.parse(savedUnlocked);
-      // Use whichever has more unlocked challenges (prevent regression)
-      if (parsedSaved.length > reconstructedUnlocked.length) {
-        finalUnlocked = parsedSaved;
-        console.log("🔄 Using saved unlocked shapes (had more progress):", finalUnlocked);
-      } else {
-        console.log("🔄 Using reconstructed unlocked shapes (more accurate):", finalUnlocked);
-      }
-    }
-    
-    console.log("🔄 Final initialized unlockedShapes:", finalUnlocked);
-    return finalUnlocked;
-  });
   const [showUnlockNotification, setShowUnlockNotification] = useState(false);
   const [unlockNotificationData, setUnlockNotificationData] = useState({
     type: 'normal', // 'normal', 'auto', 'final'
@@ -104,6 +58,8 @@ export default function HangingShapes() {
     challengeName: ''
   });
   const [isAutoProgressing, setIsAutoProgressing] = useState(false); // Auto-progression loading state
+  const [showUserProfile, setShowUserProfile] = useState(false); // User profile modal state
+  const [showSyncStatus, setShowSyncStatus] = useState(false); // Sync status notification visibility
 
 
   // Available models for image generation
@@ -112,24 +68,11 @@ export default function HangingShapes() {
     { id: "clipdrop", name: "ClipDrop", description: "High quality results" }
   ];
 
-  // Save progress to localStorage whenever unlockedShapes changes
-  useEffect(() => {
-    localStorage.setItem("unlockedShapes", JSON.stringify(unlockedShapes));
-    console.log("Progress saved to localStorage:", unlockedShapes);
-  }, [unlockedShapes]);
-
-  // Save detailed progress data to localStorage whenever progressData changes
-  useEffect(() => {
-    localStorage.setItem("challengeProgress", JSON.stringify(progressData));
-    console.log("Challenge progress data saved:", progressData);
-  }, [progressData]);
-
   // Set initial target image to the first unlocked shape
-  // Fixed: Now properly depends on unlockedShapes to ensure restoration works
   useEffect(() => {
     console.log("🔄 Initial setup - unlockedShapes:", unlockedShapes);
     
-    if (unlockedShapes.length > 0) {
+    if (unlockedShapes.length > 0 && !isProgressLoading) {
       const firstUnlockedIndex = unlockedShapes[0];
       console.log("🎯 Setting initial target to first unlocked shape:", firstUnlockedIndex, shapes[firstUnlockedIndex]?.name);
       
@@ -137,37 +80,25 @@ export default function HangingShapes() {
         setSelectedImage(shapes[firstUnlockedIndex].image);
         console.log("✅ Initial target image set to:", shapes[firstUnlockedIndex].name);
       }
-    } else {
+    } else if (!isProgressLoading) {
       console.warn("⚠️ No unlocked shapes found during initialization");
     }
-  }, [unlockedShapes]); // Fixed: Now depends on unlockedShapes
+  }, [unlockedShapes, isProgressLoading]); // Now depends on both unlockedShapes and loading state
 
-  // Add localStorage restoration debugging and verification
+  // Firebase sync status logging
   useEffect(() => {
-    console.log("🔍 localStorage restoration check:");
-    console.log("  - unlockedShapes from state:", unlockedShapes);
-    console.log("  - progressData from state:", Object.keys(progressData));
-    
-    // Verify localStorage contents
-    const storedUnlocked = localStorage.getItem("unlockedShapes");
-    const storedProgress = localStorage.getItem("challengeProgress");
-    
-    console.log("  - localStorage unlockedShapes:", storedUnlocked);
-    console.log("  - localStorage challengeProgress:", storedProgress ? Object.keys(JSON.parse(storedProgress)) : "none");
-    
-    // Check for any mismatches
-    if (storedUnlocked) {
-      const parsedUnlocked = JSON.parse(storedUnlocked);
-      const mismatch = JSON.stringify(parsedUnlocked) !== JSON.stringify(unlockedShapes);
-      if (mismatch) {
-        console.warn("⚠️ MISMATCH: localStorage unlockedShapes doesn't match state!");
-        console.log("  - localStorage:", parsedUnlocked);
-        console.log("  - State:", unlockedShapes);
-      } else {
-        console.log("✅ localStorage and state unlockedShapes are synchronized");
-      }
+    if (user) {
+      console.log("🔍 Firebase sync status:");
+      console.log("  - User authenticated:", user.email);
+      console.log("  - Progress loading:", isProgressLoading);
+      console.log("  - Progress saving:", isProgressSaving);
+      console.log("  - Sync error:", syncError);
+      console.log("  - unlockedShapes from Firebase:", unlockedShapes);
+      console.log("  - progressData from Firebase:", Object.keys(progressData));
+    } else {
+      console.log("👤 No user authenticated - using guest mode");
     }
-  }, [unlockedShapes, progressData]);
+  }, [user, isProgressLoading, isProgressSaving, syncError, unlockedShapes, progressData]);
 
   // Debug: Track AIGeneratedimg state changes
   useEffect(() => {
@@ -466,17 +397,6 @@ export default function HangingShapes() {
             console.error('❌ Auto-progression test failed:', error);
           }
         },
-        
-        // NEW: Test reset progress functionality
-        testResetProgress: () => {
-          console.log('🧪 Testing reset progress functionality...');
-          console.log('Current state before reset:');
-          console.log('- Unlocked shapes:', unlockedShapes);
-          console.log('- Progress data keys:', Object.keys(progressData));
-          console.log('- Current selected image:', selectedImage ? 'Set' : 'None');
-          console.log('- Generated image:', AIGeneratedimg ? 'Set' : 'None');
-          console.log('🔄 You can now test the reset button in the UI');
-        }
       };
       
       console.log('🎵 Voice testing functions added to window.testVoices');
@@ -485,7 +405,6 @@ export default function HangingShapes() {
       console.log('🧪 Image loading test: window.testVoices.testImageLoading()');
       console.log('🔬 Full debug test: window.testVoices.fullDebugTest()');
       console.log('🎯 Auto-progression test: window.testVoices.testAutoProgression(65) // Test with 65% score');
-      console.log('🔄 Reset progress test: window.testVoices.testResetProgress() // Check current state');
       console.log('   - Try: testAutoProgression(75) for success, testAutoProgression(50) for near-success, testAutoProgression(30) for retry');
     }
   }, [selectedImage, AIGeneratedimg]);
@@ -865,7 +784,7 @@ const handleImageLoadingAndComparison = (imageUrl, setters, comparisonParams) =>
 
 // Helper function to handle image comparison flow
 const handleImageComparisonFlow = (imageUrl, setIsImageLoading, comparisonParams) => {
-  const { selectedImage, handleComparison, setIsComparing, setResult, voiceEnabled, voiceManager, setIsVoicePlaying, shapes, unlockedShapes, setUnlockedShapes, setShowUnlockNotification, setSelectedImage: setSelectedImageFunc, setProgressData, setPrompt, setAIGeneratedimg, setHasComparedCurrentGeneration, setIsAutoProgressing, setUnlockNotificationData } = comparisonParams;
+  const { selectedImage, handleComparison, setIsComparing, setResult, voiceEnabled, voiceManager, setIsVoicePlaying, shapes, unlockedShapes, setUnlockedShapes, setShowUnlockNotification, setSelectedImage: setSelectedImageFunc, updateProgressData, setPrompt, setAIGeneratedimg, setHasComparedCurrentGeneration, setIsAutoProgressing, setUnlockNotificationData } = comparisonParams;
   
   console.log("🔄 Waiting for image to load before comparison...");
   
@@ -873,7 +792,7 @@ const handleImageComparisonFlow = (imageUrl, setIsImageLoading, comparisonParams
   img.onload = async () => {
     console.log("🖼️ Image fully loaded, starting comparison...");
     setIsImageLoading(false);
-    await performComparison(imageUrl, selectedImage, handleComparison, setIsComparing, setResult, voiceEnabled, voiceManager, setIsVoicePlaying, shapes, unlockedShapes, setUnlockedShapes, setShowUnlockNotification, setSelectedImageFunc, setProgressData, setPrompt, setAIGeneratedimg, setHasComparedCurrentGeneration, setIsAutoProgressing, setUnlockNotificationData);
+    await performComparison(imageUrl, selectedImage, handleComparison, setIsComparing, setResult, voiceEnabled, voiceManager, setIsVoicePlaying, shapes, unlockedShapes, setUnlockedShapes, setShowUnlockNotification, setSelectedImageFunc, updateProgressData, setPrompt, setAIGeneratedimg, setHasComparedCurrentGeneration, setIsAutoProgressing, setUnlockNotificationData);
   };
   
   img.onerror = () => {
@@ -888,7 +807,7 @@ const handleImageComparisonFlow = (imageUrl, setIsImageLoading, comparisonParams
 };
 
 // Helper function to perform the actual comparison
-const performComparison = async (imageUrl, selectedImage, handleComparison, setIsComparing, setResult, voiceEnabled, voiceManager, setIsVoicePlaying, shapes, unlockedShapes, setUnlockedShapes, setShowUnlockNotification, setSelectedImageFunc, setProgressData, setPrompt, setAIGeneratedimg, setHasComparedCurrentGeneration, setIsAutoProgressing, setUnlockNotificationData) => {
+const performComparison = async (imageUrl, selectedImage, handleComparison, setIsComparing, setResult, voiceEnabled, voiceManager, setIsVoicePlaying, shapes, unlockedShapes, setUnlockedShapes, setShowUnlockNotification, setSelectedImageFunc, updateProgressData, setPrompt, setAIGeneratedimg, setHasComparedCurrentGeneration, setIsAutoProgressing, setUnlockNotificationData) => {
   try {
     setIsComparing(true);
     const comparisonResult = await handleComparison(imageUrl, selectedImage);
@@ -902,7 +821,7 @@ const performComparison = async (imageUrl, selectedImage, handleComparison, setI
     const saveProgressData = (challengeIndex, percentage, generatedImageUrl = null, comparisonResultData = null) => {
       // Only save progress data for passing scores (≥60%)
       if (percentage >= 60) {
-        setProgressData(prev => ({
+        updateProgressData(prev => ({
           ...prev,
           [challengeIndex]: {
             challengeName: shapes[challengeIndex].name,
@@ -991,7 +910,7 @@ const performComparison = async (imageUrl, selectedImage, handleComparison, setI
 };
 
 // NEW: Simplified auto-progression function that works independently of voice
-const handleAutoProgression = async (comparisonResult, currentChallengeIndex, shapes, unlockedShapes, setUnlockedShapes, setShowUnlockNotification, setSelectedImage, setPrompt, setResult, setAIGeneratedimg, setHasComparedCurrentGeneration, setIsAutoProgressing, setUnlockNotificationData) => {
+const handleAutoProgression = async (comparisonResult, currentChallengeIndex, shapes, unlockedShapes, updateUnlockedShapes, setShowUnlockNotification, setSelectedImage, setPrompt, setResult, setAIGeneratedimg, setHasComparedCurrentGeneration, setIsAutoProgressing, setUnlockNotificationData) => {
   const percentage = comparisonResult.percentage || 0;
   const nextChallengeIndex = currentChallengeIndex + 1;
   const hasNextChallenge = nextChallengeIndex < shapes.length;
@@ -1005,7 +924,7 @@ const handleAutoProgression = async (comparisonResult, currentChallengeIndex, sh
     console.log(`🎉 AUTO-UNLOCK TRIGGERED! Score ${percentage.toFixed(1)}% >= 60% - Processing unlock...`);
     
     // Step 1: Unlock the next challenge immediately
-    setUnlockedShapes(prev => {
+    updateUnlockedShapes(prev => {
       const newUnlocked = [...prev, nextChallengeIndex];
       console.log("✅ Unlocked shapes updated:", newUnlocked);
       return newUnlocked;
@@ -1068,7 +987,7 @@ const handleVoiceFeedback = async (comparisonResult, voiceEnabled, voiceManager,
       const saveProgressData = (challengeIndex, score, percentage, generatedImageUrl = null, comparisonResultData = null) => {
         // Only save progress data for passing scores (≥60%)
         if (percentage >= 60) {
-          setProgressData(prev => ({
+          updateProgressData(prev => ({
             ...prev,
             [challengeIndex]: {
               challengeName: shapes[challengeIndex].name,
@@ -1239,7 +1158,7 @@ const handleVoiceFeedback = async (comparisonResult, voiceEnabled, voiceManager,
       const saveProgressData = (challengeIndex, score, percentage, generatedImageUrl = null, comparisonResultData = null) => {
         // Only save progress data for passing scores (≥60%)
         if (percentage >= 60) {
-          setProgressData(prev => ({
+          updateProgressData(prev => ({
             ...prev,
             [challengeIndex]: {
               challengeName: shapes[challengeIndex].name,
@@ -1355,7 +1274,7 @@ const handleGenerateClick = async () => {
         setUnlockedShapes,
         setShowUnlockNotification,
         setSelectedImage,
-        setProgressData,
+        updateProgressData,
         setPrompt,
         setAIGeneratedimg,
         setHasComparedCurrentGeneration,
@@ -1376,65 +1295,48 @@ const handleGenerateClick = async () => {
   }
 };
 
-// Helper function to reset all progress
-const handleResetProgress = () => {
-  // Show confirmation dialog
-  const confirmReset = window.confirm(
-    "Are you sure you want to reset ALL progress?\n\n" +
-    "This will:\n" +
-    "• Clear all unlocked challenges\n" +
-    "• Remove all generated images\n" +
-    "• Delete all progress data\n" +
-    "• Reset to the beginning\n\n" +
-    "This action cannot be undone!"
-  );
-  
-  if (confirmReset) {
-    console.log("🔄 Resetting all progress...");
-    
-    // Stop any ongoing voice
-    if (isVoicePlaying) {
-      voiceManager.stopCurrentAudio();
-      setIsVoicePlaying(false);
-    }
-    
-    // Clear localStorage
-    localStorage.removeItem("unlockedShapes");
-    localStorage.removeItem("challengeProgress");
-    console.log("🧹 Cleared localStorage");
-    
-    // Reset all state to initial values
-    setUnlockedShapes([0]); // Only first challenge unlocked
-    setProgressData({});
-    setSelectedImage(shapes[0].image); // Reset to first challenge
-    setAIGeneratedimg(null);
-    setResult(null);
-    setPrompt("");
-    setHasComparedCurrentGeneration(false);
-    setIsComparing(false);
-    setIsGenerating(false);
-    setIsImageLoading(false);
-    setShowUnlockNotification(false);
-    setIsAutoProgressing(false);
-    
-    console.log("✅ Progress reset complete! Back to the beginning.");
-    
-    // Show reset confirmation
-    setUnlockNotificationData({
-      type: 'reset',
-      score: 0,
-      challengeName: 'Progress Reset Complete!'
-    });
-    setShowUnlockNotification(true);
-    setTimeout(() => setShowUnlockNotification(false), 3000);
-  }
-};
+
 
 const handleKeyPress = (e) => {
   if (e.key === 'Enter') {
     handleGenerateClick();
   }
 };
+
+// Debug: Track user auth status and sync states
+  useEffect(() => {
+    if (user) {
+      console.log("👤 User authenticated:", {
+        uid: user.uid,
+        email: user.email,
+        isGuest: user.isGuest
+      });
+      console.log("  - Is loading:", isProgressLoading);
+      console.log("  - Is saving:", isProgressSaving);
+      console.log("  - Sync error:", syncError);
+      console.log("  - unlockedShapes from Firebase:", unlockedShapes);
+      console.log("  - progressData from Firebase:", Object.keys(progressData));
+    } else {
+      console.log("👤 No user authenticated - using guest mode");
+    }
+  }, [user, isProgressLoading, isProgressSaving, syncError, unlockedShapes, progressData]);
+
+  // Show sync status notification when user logs in or sync completes
+  useEffect(() => {
+    if (user && !user.isGuest && !isProgressLoading && !isProgressSaving && !syncError) {
+      // Show sync status for 5 seconds when successfully synced
+      console.log('✅ Showing sync status notification for 5 seconds');
+      setShowSyncStatus(true);
+      const timer = setTimeout(() => {
+        console.log('⏰ Hiding sync status notification after 5 seconds');
+        setShowSyncStatus(false);
+      }, 5000); // Hide after 5 seconds
+
+      return () => clearTimeout(timer);
+    } else {
+      setShowSyncStatus(false);
+    }
+  }, [user, isProgressLoading, isProgressSaving, syncError, lastSyncTime]);
 
   return (
     <div className="container">
@@ -1462,6 +1364,57 @@ const handleKeyPress = (e) => {
         ))}
       </div>
 
+      {/* Firebase Sync Status Indicator */}
+      <AnimatePresence>
+        {user && (showSyncStatus || user.isGuest || syncError || isProgressSaving) && (
+          <motion.div
+            style={{
+              position: 'fixed',
+              top: '20px',
+              left: '20px',
+              background: user.isGuest
+                ? 'linear-gradient(135deg, #8b5cf6, #7c3aed)'
+                : syncError 
+                  ? 'linear-gradient(135deg, #ef4444, #dc2626)'
+                  : isProgressSaving 
+                    ? 'linear-gradient(135deg, #f59e0b, #d97706)'
+                    : 'linear-gradient(135deg, #10b981, #059669)',
+              color: 'white',
+              padding: '8px 12px',
+              borderRadius: '8px',
+              fontSize: '12px',
+              fontWeight: '600',
+              fontFamily: 'Poppins, sans-serif',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+              zIndex: 1000,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              minWidth: '140px'
+            }}
+            initial={{ x: -100, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            exit={{ x: -100, opacity: 0 }}
+            transition={{ duration: 0.3 }}
+          >
+            <motion.span
+              animate={isProgressSaving ? { rotate: 360 } : {}}
+              transition={{ duration: 1, repeat: isProgressSaving ? Infinity : 0, ease: "linear" }}
+            >
+              {user.isGuest ? '🎯' : syncError ? '❌' : isProgressSaving ? '⏳' : '✅'}
+            </motion.span>
+            <span>
+              {user.isGuest ? 'Demo Mode' : syncError ? 'Sync Error' : isProgressSaving ? 'Saving...' : 'Synced'}
+            </span>
+            {user.email && (
+              <span style={{ fontSize: '10px', opacity: 0.8 }}>
+                ({user.email.split('@')[0]})
+              </span>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Enhanced Unlock Notification */}
       <AnimatePresence>
         {showUnlockNotification && (
@@ -1472,8 +1425,6 @@ const handleKeyPress = (e) => {
               right: '20px',
               background: unlockNotificationData.type === 'auto' 
                 ? 'linear-gradient(135deg, #10b981, #059669)' 
-                : unlockNotificationData.type === 'reset'
-                ? 'linear-gradient(135deg, #ef4444, #dc2626)'
                 : 'linear-gradient(135deg, #4ade80, #10b981)',
               color: 'white',
               padding: '16px 24px',
@@ -1510,8 +1461,7 @@ const handleKeyPress = (e) => {
                 }}
                 style={{ fontSize: '1.2rem' }}
               >
-                {unlockNotificationData.type === 'auto' ? '🎉' : 
-                 unlockNotificationData.type === 'reset' ? '🔄' : '🔓'}
+                {unlockNotificationData.type === 'auto' ? '🎉' : '🔓'}
               </motion.span>
               
               <div>
@@ -1522,15 +1472,6 @@ const handleKeyPress = (e) => {
                     </div>
                     <div style={{ fontSize: '0.8rem', opacity: 0.9, marginTop: '2px' }}>
                       Auto-unlocked: {unlockNotificationData.challengeName}
-                    </div>
-                  </div>
-                ) : unlockNotificationData.type === 'reset' ? (
-                  <div>
-                    <div style={{ fontSize: '1rem', fontWeight: '700' }}>
-                      {unlockNotificationData.challengeName}
-                    </div>
-                    <div style={{ fontSize: '0.8rem', opacity: 0.9, marginTop: '2px' }}>
-                      All progress cleared. Starting fresh!
                     </div>
                   </div>
                 ) : (
@@ -1562,7 +1503,7 @@ const handleKeyPress = (e) => {
                 >
                   🎯
                 </motion.span>
-                Moving to next challenge automatically...
+                <span>Moving to next challenge automatically...</span>
               </motion.div>
             )}
           </motion.div>
@@ -1583,7 +1524,7 @@ const handleKeyPress = (e) => {
             progressData={progressData}
             onShapeClick={handleProgressShapeClick}
             selectedImage={selectedImage}
-            onResetProgress={handleResetProgress}
+            onShowUserProfile={() => setShowUserProfile(true)}
           />
         </div>
         <div className="main-content">
@@ -1821,6 +1762,12 @@ const handleKeyPress = (e) => {
           </div>
         </div>
       </div>
+
+      {/* User Profile Modal */}
+      <UserProfile 
+        isOpen={showUserProfile}
+        onClose={() => setShowUserProfile(false)}
+      />
     </div>
   );
 }
