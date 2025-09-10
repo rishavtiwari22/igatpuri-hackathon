@@ -122,7 +122,7 @@ const ProgressTracker = ({
                 position: 'relative'
               }}
               title={isUnlocked ? 
-                `${shape.name}${shapeProgress ? ` - Best: ${shapeProgress.bestScore.toFixed(1)}% (${shapeProgress.attempts} attempts)` : ' - Click to navigate'}` : 
+                `${shape.name}${shapeProgress ? ` - Best: ${shapeProgress.bestScore.toFixed(1)}% (${shapeProgress.attempts} passing attempts)` : ' - Unlocked, no passing scores yet'}` : 
                 `${shape.name} - Locked`
               }
             >
@@ -131,19 +131,19 @@ const ProgressTracker = ({
               </div>
               
               {/* Progress indicators */}
-              {isUnlocked && shapeProgress && (
+              {isUnlocked && (
                 <div style={{
                   position: 'absolute',
                   bottom: '-20px',
                   left: '50%',
                   transform: 'translateX(-50%)',
                   fontSize: '0.7rem',
-                  color: shapeProgress.completed ? '#10b981' : '#f59e0b',
+                  color: shapeProgress ? '#10b981' : '#6b7280',
                   fontWeight: '600',
                   textAlign: 'center',
                   minWidth: '40px'
                 }}>
-                  {shapeProgress.bestScore.toFixed(0)}%
+                  {shapeProgress ? `${shapeProgress.bestScore.toFixed(0)}%` : '—'}
                 </div>
               )}
               

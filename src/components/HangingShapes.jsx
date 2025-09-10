@@ -900,22 +900,25 @@ const performComparison = async (imageUrl, selectedImage, handleComparison, setI
     // Save progress data for ALL attempts (not just successful auto-progression)
     const currentChallengeIndex = shapes.findIndex(shape => shape.image === selectedImage);
     const saveProgressData = (challengeIndex, percentage, generatedImageUrl = null, comparisonResultData = null) => {
-      setProgressData(prev => ({
-        ...prev,
-        [challengeIndex]: {
-          challengeName: shapes[challengeIndex].name,
-          bestScore: Math.max(prev[challengeIndex]?.bestScore || 0, percentage),
-          latestScore: percentage,
-          attempts: (prev[challengeIndex]?.attempts || 0) + 1,
-          completed: percentage >= 60,
-          firstCompletedAt: prev[challengeIndex]?.firstCompletedAt || (percentage >= 60 ? new Date().toISOString() : null),
-          lastAttemptAt: new Date().toISOString(),
-          // Store the generated image URL (keep the best performing one or latest)
-          generatedImage: generatedImageUrl || prev[challengeIndex]?.generatedImage,
-          // Store the full comparison result for restoring feedback
-          lastComparisonResult: comparisonResultData || prev[challengeIndex]?.lastComparisonResult
-        }
-      }));
+      // Only save progress data for passing scores (≥60%)
+      if (percentage >= 60) {
+        setProgressData(prev => ({
+          ...prev,
+          [challengeIndex]: {
+            challengeName: shapes[challengeIndex].name,
+            bestScore: Math.max(prev[challengeIndex]?.bestScore || 0, percentage),
+            latestScore: percentage,
+            attempts: (prev[challengeIndex]?.attempts || 0) + 1,
+            completed: true, // Always true since we only store passing scores
+            firstCompletedAt: prev[challengeIndex]?.firstCompletedAt || new Date().toISOString(),
+            lastAttemptAt: new Date().toISOString(),
+            // Store the generated image URL for passing scores only
+            generatedImage: generatedImageUrl || prev[challengeIndex]?.generatedImage,
+            // Store the full comparison result for restoring feedback
+            lastComparisonResult: comparisonResultData || prev[challengeIndex]?.lastComparisonResult
+          }
+        }));
+      }
     };
     
     // More robust validation for MS-SSIM result structure
@@ -1063,22 +1066,25 @@ const handleVoiceFeedback = async (comparisonResult, voiceEnabled, voiceManager,
       
       // Save challenge progress data
       const saveProgressData = (challengeIndex, score, percentage, generatedImageUrl = null, comparisonResultData = null) => {
-        setProgressData(prev => ({
-          ...prev,
-          [challengeIndex]: {
-            challengeName: shapes[challengeIndex].name,
-            bestScore: Math.max(prev[challengeIndex]?.bestScore || 0, percentage),
-            latestScore: percentage,
-            attempts: (prev[challengeIndex]?.attempts || 0) + 1,
-            completed: percentage >= 60,
-            firstCompletedAt: prev[challengeIndex]?.firstCompletedAt || (percentage >= 60 ? new Date().toISOString() : null),
-            lastAttemptAt: new Date().toISOString(),
-            // Store the generated image URL (keep the best performing one or latest)
-            generatedImage: generatedImageUrl || prev[challengeIndex]?.generatedImage,
-            // Store the full comparison result for restoring feedback
-            lastComparisonResult: comparisonResultData || prev[challengeIndex]?.lastComparisonResult
-          }
-        }));
+        // Only save progress data for passing scores (≥60%)
+        if (percentage >= 60) {
+          setProgressData(prev => ({
+            ...prev,
+            [challengeIndex]: {
+              challengeName: shapes[challengeIndex].name,
+              bestScore: Math.max(prev[challengeIndex]?.bestScore || 0, percentage),
+              latestScore: percentage,
+              attempts: (prev[challengeIndex]?.attempts || 0) + 1,
+              completed: true, // Always true since we only store passing scores
+              firstCompletedAt: prev[challengeIndex]?.firstCompletedAt || new Date().toISOString(),
+              lastAttemptAt: new Date().toISOString(),
+              // Store the generated image URL for passing scores only
+              generatedImage: generatedImageUrl || prev[challengeIndex]?.generatedImage,
+              // Store the full comparison result for restoring feedback
+              lastComparisonResult: comparisonResultData || prev[challengeIndex]?.lastComparisonResult
+            }
+          }));
+        }
       };
       
       // Save progress for current challenge
@@ -1231,22 +1237,25 @@ const handleVoiceFeedback = async (comparisonResult, voiceEnabled, voiceManager,
       
       // Save progress data for silent mode too
       const saveProgressData = (challengeIndex, score, percentage, generatedImageUrl = null, comparisonResultData = null) => {
-        setProgressData(prev => ({
-          ...prev,
-          [challengeIndex]: {
-            challengeName: shapes[challengeIndex].name,
-            bestScore: Math.max(prev[challengeIndex]?.bestScore || 0, percentage),
-            latestScore: percentage,
-            attempts: (prev[challengeIndex]?.attempts || 0) + 1,
-            completed: percentage >= 60,
-            firstCompletedAt: prev[challengeIndex]?.firstCompletedAt || (percentage >= 60 ? new Date().toISOString() : null),
-            lastAttemptAt: new Date().toISOString(),
-            // Store the generated image URL (keep the best performing one or latest)
-            generatedImage: generatedImageUrl || prev[challengeIndex]?.generatedImage,
-            // Store the full comparison result for restoring feedback
-            lastComparisonResult: comparisonResultData || prev[challengeIndex]?.lastComparisonResult
-          }
-        }));
+        // Only save progress data for passing scores (≥60%)
+        if (percentage >= 60) {
+          setProgressData(prev => ({
+            ...prev,
+            [challengeIndex]: {
+              challengeName: shapes[challengeIndex].name,
+              bestScore: Math.max(prev[challengeIndex]?.bestScore || 0, percentage),
+              latestScore: percentage,
+              attempts: (prev[challengeIndex]?.attempts || 0) + 1,
+              completed: true, // Always true since we only store passing scores
+              firstCompletedAt: prev[challengeIndex]?.firstCompletedAt || new Date().toISOString(),
+              lastAttemptAt: new Date().toISOString(),
+              // Store the generated image URL for passing scores only
+              generatedImage: generatedImageUrl || prev[challengeIndex]?.generatedImage,
+              // Store the full comparison result for restoring feedback
+              lastComparisonResult: comparisonResultData || prev[challengeIndex]?.lastComparisonResult
+            }
+          }));
+        }
       };
       
       // Save progress for current challenge
