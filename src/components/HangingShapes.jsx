@@ -409,6 +409,51 @@ export default function HangingShapes() {
     }
   }, [selectedImage, AIGeneratedimg]);
 
+  // Debug function to test image display directly
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.debugImageGeneration = {
+        testImageDisplay: (testUrl = "https://image.pollinations.ai/prompt/a%20red%20car") => {
+          console.log("🧪 Testing image display with URL:", testUrl);
+          console.log("🧪 Current state before test:");
+          console.log("  - AIGeneratedimg:", AIGeneratedimg);
+          console.log("  - isGenerating:", isGenerating);
+          console.log("  - isImageLoading:", isImageLoading);
+          
+          setAIGeneratedimg(testUrl);
+          setIsGenerating(false);
+          setIsImageLoading(false);
+          
+          console.log("🧪 State set - image should now be displayed");
+        },
+        
+        getCurrentState: () => {
+          return {
+            AIGeneratedimg,
+            isGenerating,
+            isImageLoading,
+            selectedImage,
+            prompt
+          };
+        },
+        
+        resetState: () => {
+          setAIGeneratedimg(null);
+          setIsGenerating(false);
+          setIsImageLoading(false);
+          setResult(null);
+          console.log("🧪 State reset");
+        }
+      };
+      
+      console.log("🧪 Debug functions added to window.debugImageGeneration");
+      console.log("Usage:");
+      console.log("  - window.debugImageGeneration.testImageDisplay() // Test with default URL");
+      console.log("  - window.debugImageGeneration.getCurrentState() // Check current state");
+      console.log("  - window.debugImageGeneration.resetState() // Reset all states");
+    }
+  }, [AIGeneratedimg, isGenerating, isImageLoading, selectedImage, prompt]);
+
   const handleShapeClick = (image, index) => {
     if (unlockedShapes.includes(index)) {
       // Stop any ongoing voice
@@ -603,19 +648,20 @@ export default function HangingShapes() {
             testImg.crossOrigin = "anonymous";
             
             const timeout = setTimeout(() => {
-              console.warn(`⏰ URL format ${i + 1} timed out`);
+              console.warn(`⏰ URL format ${i + 1} timed out after 8 seconds`);
               resolve(false);
             }, 8000); // Increased to 8 seconds to allow for generation time
             
             testImg.onload = () => {
               clearTimeout(timeout);
-              console.log(`✅ URL format ${i + 1} verified and accessible`);
+              console.log(`✅ URL format ${i + 1} verified and accessible:`, imageUrl);
               resolve(true);
             };
             
             testImg.onerror = (error) => {
               clearTimeout(timeout);
               console.warn(`❌ URL format ${i + 1} failed:`, error);
+              console.warn(`❌ Failed URL was:`, imageUrl);
               resolve(false);
             };
             
@@ -770,6 +816,10 @@ const handleImageLoadingAndComparison = (imageUrl, setters, comparisonParams) =>
   console.log("✅ Image generation successful - displaying immediately");
   setAIGeneratedimg(imageUrl);
   
+  // Set isImageLoading to false immediately so the image can be displayed
+  // The img element's onLoad/onError will handle any additional loading states
+  setIsImageLoading(false);
+  
   // Always check if we have selectedImage for comparison, ignore hasComparedCurrentGeneration flag here
   // since we already reset it at the start of generation
   if (selectedImage) {
@@ -777,14 +827,13 @@ const handleImageLoadingAndComparison = (imageUrl, setters, comparisonParams) =>
     setHasComparedCurrentGeneration(true);
     handleImageComparisonFlow(imageUrl, setIsImageLoading, comparisonParams);
   } else {
-    console.log("📷 No selected image, skipping comparison...");
-    handleSimpleImageLoad(imageUrl, setIsImageLoading);
+    console.log("📷 No selected image, skipping comparison. Image should now be displayed.");
   }
 };
 
 // Helper function to handle image comparison flow
 const handleImageComparisonFlow = (imageUrl, setIsImageLoading, comparisonParams) => {
-  const { selectedImage, handleComparison, setIsComparing, setResult, voiceEnabled, voiceManager, setIsVoicePlaying, shapes, unlockedShapes, setUnlockedShapes, setShowUnlockNotification, setSelectedImage: setSelectedImageFunc, updateProgressData, setPrompt, setAIGeneratedimg, setHasComparedCurrentGeneration, setIsAutoProgressing, setUnlockNotificationData } = comparisonParams;
+  const { selectedImage, handleComparison, setIsComparing, setResult, voiceEnabled, voiceManager, setIsVoicePlaying, shapes, unlockedShapes, updateUnlockedShapes, setShowUnlockNotification, setSelectedImage: setSelectedImageFunc, updateProgressData, setPrompt, setAIGeneratedimg, setHasComparedCurrentGeneration, setIsAutoProgressing, setUnlockNotificationData } = comparisonParams;
   
   console.log("🔄 Waiting for image to load before comparison...");
   
@@ -792,7 +841,7 @@ const handleImageComparisonFlow = (imageUrl, setIsImageLoading, comparisonParams
   img.onload = async () => {
     console.log("🖼️ Image fully loaded, starting comparison...");
     setIsImageLoading(false);
-    await performComparison(imageUrl, selectedImage, handleComparison, setIsComparing, setResult, voiceEnabled, voiceManager, setIsVoicePlaying, shapes, unlockedShapes, setUnlockedShapes, setShowUnlockNotification, setSelectedImageFunc, updateProgressData, setPrompt, setAIGeneratedimg, setHasComparedCurrentGeneration, setIsAutoProgressing, setUnlockNotificationData);
+    await performComparison(imageUrl, selectedImage, handleComparison, setIsComparing, setResult, voiceEnabled, voiceManager, setIsVoicePlaying, shapes, unlockedShapes, updateUnlockedShapes, setShowUnlockNotification, setSelectedImageFunc, updateProgressData, setPrompt, setAIGeneratedimg, setHasComparedCurrentGeneration, setIsAutoProgressing, setUnlockNotificationData);
   };
   
   img.onerror = () => {
@@ -807,7 +856,7 @@ const handleImageComparisonFlow = (imageUrl, setIsImageLoading, comparisonParams
 };
 
 // Helper function to perform the actual comparison
-const performComparison = async (imageUrl, selectedImage, handleComparison, setIsComparing, setResult, voiceEnabled, voiceManager, setIsVoicePlaying, shapes, unlockedShapes, setUnlockedShapes, setShowUnlockNotification, setSelectedImageFunc, updateProgressData, setPrompt, setAIGeneratedimg, setHasComparedCurrentGeneration, setIsAutoProgressing, setUnlockNotificationData) => {
+const performComparison = async (imageUrl, selectedImage, handleComparison, setIsComparing, setResult, voiceEnabled, voiceManager, setIsVoicePlaying, shapes, unlockedShapes, updateUnlockedShapes, setShowUnlockNotification, setSelectedImageFunc, updateProgressData, setPrompt, setAIGeneratedimg, setHasComparedCurrentGeneration, setIsAutoProgressing, setUnlockNotificationData) => {
   try {
     setIsComparing(true);
     const comparisonResult = await handleComparison(imageUrl, selectedImage);
@@ -888,10 +937,10 @@ const performComparison = async (imageUrl, selectedImage, handleComparison, setI
         setResult(normalizedResult);
         
         // Check for auto-progression FIRST (regardless of voice)
-        await handleAutoProgression(normalizedResult, currentChallengeIndex, shapes, unlockedShapes, setUnlockedShapes, setShowUnlockNotification, setSelectedImageFunc, setPrompt, setResult, setAIGeneratedimg, setHasComparedCurrentGeneration, setIsAutoProgressing, setUnlockNotificationData);
+        await handleAutoProgression(normalizedResult, currentChallengeIndex, shapes, unlockedShapes, updateUnlockedShapes, setShowUnlockNotification, setSelectedImageFunc, setPrompt, setResult, setAIGeneratedimg, setHasComparedCurrentGeneration, setIsAutoProgressing, setUnlockNotificationData);
         
         // Then handle voice feedback
-        handleVoiceFeedback(normalizedResult, voiceEnabled, voiceManager, setIsVoicePlaying, selectedImage, shapes, unlockedShapes, setUnlockedShapes, setShowUnlockNotification, setSelectedImageFunc, AIGeneratedimg);
+        handleVoiceFeedback(normalizedResult, voiceEnabled, voiceManager, setIsVoicePlaying, selectedImage, shapes, unlockedShapes, updateUnlockedShapes, setShowUnlockNotification, setSelectedImageFunc, AIGeneratedimg);
       } else {
         console.warn("❌ Comparison result missing valid score:", comparisonResult);
         const errorMessage = "Invalid comparison result - no valid score found";
@@ -971,7 +1020,7 @@ const handleAutoProgression = async (comparisonResult, currentChallengeIndex, sh
 };
 
 // Helper function to handle voice feedback and automatic progression
-const handleVoiceFeedback = async (comparisonResult, voiceEnabled, voiceManager, setIsVoicePlaying, selectedImage, shapes, unlockedShapes, setUnlockedShapes, setShowUnlockNotification, setSelectedImage, AIGeneratedimg) => {
+const handleVoiceFeedback = async (comparisonResult, voiceEnabled, voiceManager, setIsVoicePlaying, selectedImage, shapes, unlockedShapes, updateUnlockedShapes, setShowUnlockNotification, setSelectedImage, AIGeneratedimg) => {
   if (voiceEnabled) {
     try {
       setIsVoicePlaying(true);
@@ -1039,7 +1088,7 @@ const handleVoiceFeedback = async (comparisonResult, voiceEnabled, voiceManager,
           
           setIsAutoProgressing(true); // Start auto-progression loading
           
-          setUnlockedShapes(prev => {
+          updateUnlockedShapes(prev => {
             const newUnlocked = [...prev, nextChallengeIndex];
             console.log("✅ New unlocked shapes:", newUnlocked);
             return newUnlocked;
@@ -1216,9 +1265,16 @@ const handleVoiceFeedback = async (comparisonResult, voiceEnabled, voiceManager,
 
 // Helper function to handle simple image loading (no comparison)
 const handleSimpleImageLoad = (imageUrl, setIsImageLoading) => {
+  console.log("📷 handleSimpleImageLoad called for:", imageUrl);
   const img = new Image();
-  img.onload = () => setIsImageLoading(false);
-  img.onerror = () => setIsImageLoading(false);
+  img.onload = () => {
+    console.log("📷 Simple image load successful, setting isImageLoading to false");
+    setIsImageLoading(false);
+  };
+  img.onerror = () => {
+    console.log("📷 Simple image load failed, setting isImageLoading to false");
+    setIsImageLoading(false);
+  };
   img.src = imageUrl;
 };
 
@@ -1271,7 +1327,7 @@ const handleGenerateClick = async () => {
         setIsVoicePlaying,
         shapes,
         unlockedShapes,
-        setUnlockedShapes,
+        setUnlockedShapes: updateUnlockedShapes,
         setShowUnlockNotification,
         setSelectedImage,
         updateProgressData,
@@ -1415,7 +1471,7 @@ const handleKeyPress = (e) => {
         )}
       </AnimatePresence>
 
-      {/* Enhanced Unlock Notification */}clearInterval
+      {/* Enhanced Unlock Notification */}
       <AnimatePresence>
         {showUnlockNotification && (
           <motion.div
@@ -1619,12 +1675,11 @@ const handleKeyPress = (e) => {
           <div className="right-panel">
             <div className="image-placeholder" style={{ position: 'relative' }}>
               <AnimatePresence>
-                {(isGenerating || isImageLoading) && <LoaderComponent />}
+                {isGenerating && <LoaderComponent />}
               </AnimatePresence>
               {(() => {
-                // console.log("Render check - AIGeneratedimg:", !!AIGeneratedimg, "isGenerating:", isGenerating, "isImageLoading:", isImageLoading);
-                
-                if (AIGeneratedimg && !isGenerating && !isImageLoading) {
+                // Show image if we have one and we're not generating
+                if (AIGeneratedimg && !isGenerating) {
                   return (
                     <motion.div 
                       className="image-display"
@@ -1637,14 +1692,11 @@ const handleKeyPress = (e) => {
                         src={AIGeneratedimg} 
                         alt="AI Generated" 
                         onLoad={() => {
-                          console.log("🖼️ Image loaded successfully");
-                          setIsImageLoading(false);
+                          console.log("🖼️ Generated image loaded successfully");
                         }} 
                         onError={(e) => {
-                          console.error("❌ Image display failed:", e);
+                          console.error("❌ Generated image display failed:", e);
                           console.log("🔄 Image URL that failed:", AIGeneratedimg);
-                          setIsImageLoading(false);
-                          // Keep the image state so users can see what URL was generated
                         }}
                         style={{
                           maxWidth: '100%',
@@ -1655,8 +1707,8 @@ const handleKeyPress = (e) => {
                       />
                     </motion.div>
                   );
-                } else if (isGenerating || isImageLoading) {
-                  // Show loading state - loader is handled above in AnimatePresence
+                } else if (isGenerating) {
+                  // Show loading state when generating
                   return null;
                 } else {
                   return (
