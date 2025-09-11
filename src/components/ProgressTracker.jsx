@@ -15,7 +15,7 @@ const ProgressTracker = ({
   progressData = {},
   onShapeClick,
   selectedImage,
-  onResetProgress
+  onShowUserProfile
 }) => {
   const progressListRef = useRef(null);
 
@@ -71,37 +71,17 @@ const ProgressTracker = ({
         {isVoicePlaying ? '📢' : (voiceEnabled ? '🎤' : '🔇')}
       </motion.button>
 
-      {/* Reset Progress Button */}
-      {onResetProgress && (
+      {/* User Profile Button */}
+      {onShowUserProfile && (
         <motion.button
-          onClick={onResetProgress}
-          className="reset-progress-button"
+          onClick={onShowUserProfile}
+          className="user-profile-button"
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
-          title="Reset all progress"
-          style={{
-            position: 'absolute',
-            bottom: '10px',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            padding: '8px 12px',
-            borderRadius: '6px',
-            border: 'none',
-            background: 'linear-gradient(135deg, #ef4444, #dc2626)',
-            color: 'white',
-            fontSize: '12px',
-            fontWeight: '600',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '4px',
-            transition: 'all 0.3s ease',
-            boxShadow: '0 4px 12px rgba(239, 68, 68, 0.3)',
-            zIndex: 10
-          }}
+          title="View user profile and stats"
         >
-          🔄 Reset
+          <span>👤</span>
+          <span>Profile</span>
         </motion.button>
       )}
       
@@ -122,7 +102,7 @@ const ProgressTracker = ({
                 position: 'relative'
               }}
               title={isUnlocked ? 
-                `${shape.name}${shapeProgress ? ` - Best: ${shapeProgress.bestScore.toFixed(1)}% (${shapeProgress.attempts} attempts)` : ' - Click to navigate'}` : 
+                `${shape.name}${shapeProgress ? ` - Best: ${shapeProgress.bestScore.toFixed(1)}% (${shapeProgress.attempts} passing attempts)` : ' - Unlocked, no passing scores yet'}` : 
                 `${shape.name} - Locked`
               }
             >
@@ -131,19 +111,19 @@ const ProgressTracker = ({
               </div>
               
               {/* Progress indicators */}
-              {isUnlocked && shapeProgress && (
+              {isUnlocked && (
                 <div style={{
                   position: 'absolute',
                   bottom: '-20px',
                   left: '50%',
                   transform: 'translateX(-50%)',
                   fontSize: '0.7rem',
-                  color: shapeProgress.completed ? '#10b981' : '#f59e0b',
+                  color: shapeProgress ? '#10b981' : '#6b7280',
                   fontWeight: '600',
                   textAlign: 'center',
                   minWidth: '40px'
                 }}>
-                  {shapeProgress.bestScore.toFixed(0)}%
+                  {shapeProgress ? `${shapeProgress.bestScore.toFixed(0)}%` : '—'}
                 </div>
               )}
               
