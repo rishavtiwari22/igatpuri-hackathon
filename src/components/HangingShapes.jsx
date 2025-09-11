@@ -1415,7 +1415,7 @@ const handleKeyPress = (e) => {
         )}
       </AnimatePresence>
 
-      {/* Enhanced Unlock Notification */}
+      {/* Enhanced Unlock Notification */}clearInterval
       <AnimatePresence>
         {showUnlockNotification && (
           <motion.div
