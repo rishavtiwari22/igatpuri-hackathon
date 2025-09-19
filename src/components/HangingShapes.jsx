@@ -961,16 +961,18 @@ const performComparison = async (imageUrl, selectedImage, handleComparison, setI
 // NEW: Simplified auto-progression function that works independently of voice
 const handleAutoProgression = async (comparisonResult, currentChallengeIndex, shapes, unlockedShapes, updateUnlockedShapes, setShowUnlockNotification, setSelectedImage, setPrompt, setResult, setAIGeneratedimg, setHasComparedCurrentGeneration, setIsAutoProgressing, setUnlockNotificationData) => {
   const percentage = comparisonResult.percentage || 0;
+  // Round to handle floating point issues, e.g., 59.99999999999999
+  const roundedPercentage = parseFloat(percentage.toFixed(2));
   const nextChallengeIndex = currentChallengeIndex + 1;
   const hasNextChallenge = nextChallengeIndex < shapes.length;
   const isCurrentUnlocked = unlockedShapes.includes(currentChallengeIndex);
   const isNextAlreadyUnlocked = unlockedShapes.includes(nextChallengeIndex);
   
-  console.log(`🔍 Auto-progression check: Score ${percentage}%, Current: ${currentChallengeIndex}, Next: ${nextChallengeIndex}, Has next: ${hasNextChallenge}, Next unlocked: ${isNextAlreadyUnlocked}`);
+  console.log(`🔍 Auto-progression check: Score ${percentage}%, Rounded: ${roundedPercentage}%, Current: ${currentChallengeIndex}, Next: ${nextChallengeIndex}, Has next: ${hasNextChallenge}, Next unlocked: ${isNextAlreadyUnlocked}`);
   
   // AUTO-UNLOCK: Score >= 60% - Immediately unlock next challenge
-  if (percentage >= 60 && hasNextChallenge && isCurrentUnlocked && !isNextAlreadyUnlocked) {
-    console.log(`🎉 AUTO-UNLOCK TRIGGERED! Score ${percentage.toFixed(1)}% >= 60% - Processing unlock...`);
+  if (roundedPercentage >= 60 && hasNextChallenge && isCurrentUnlocked && !isNextAlreadyUnlocked) {
+    console.log(`🎉 AUTO-UNLOCK TRIGGERED! Score ${percentage.toFixed(1)}% (Rounded: ${roundedPercentage}%) >= 60% - Processing unlock...`);
     
     // Step 1: Unlock the next challenge immediately
     updateUnlockedShapes(prev => {
@@ -1031,11 +1033,12 @@ const handleVoiceFeedback = async (comparisonResult, voiceEnabled, voiceManager,
       // Get the score from the normalized result
       const score = comparisonResult.combined || comparisonResult.percentage / 100 || 0;
       const percentage = comparisonResult.percentage || score * 100 || 0;
+      const roundedPercentage = parseFloat(percentage.toFixed(2));
       
       // Save challenge progress data
       const saveProgressData = (challengeIndex, score, percentage, generatedImageUrl = null, comparisonResultData = null) => {
         // Only save progress data for passing scores (≥60%)
-        if (percentage >= 60) {
+        if (roundedPercentage >= 60) {
           updateProgressData(prev => ({
             ...prev,
             [challengeIndex]: {
@@ -1058,7 +1061,7 @@ const handleVoiceFeedback = async (comparisonResult, voiceEnabled, voiceManager,
       // Save progress for current challenge
       saveProgressData(currentChallengeIndex, score, percentage, AIGeneratedimg, comparisonResult);
       
-      console.log(`🎵 Playing contextual voice for ${percentage.toFixed(1)}% similarity with alternation...`);
+      console.log(`🎵 Playing contextual voice for ${percentage.toFixed(1)}% (Rounded: ${roundedPercentage}%) similarity with alternation...`);
       
       // Determine progression logic
       const nextChallengeIndex = currentChallengeIndex + 1;
@@ -1067,8 +1070,8 @@ const handleVoiceFeedback = async (comparisonResult, voiceEnabled, voiceManager,
       const isNextAlreadyUnlocked = unlockedShapes.includes(nextChallengeIndex);
       
       // SUCCESS: Score >= 60% - Auto unlock and progress
-      if (percentage >= 60 && hasNextChallenge && isCurrentUnlocked && !isNextAlreadyUnlocked) {
-        console.log(`🎉 SUCCESS! Score ${percentage.toFixed(1)}% >= 60% - Auto-unlocking next challenge`);
+      if (roundedPercentage >= 60 && hasNextChallenge && isCurrentUnlocked && !isNextAlreadyUnlocked) {
+        console.log(`🎉 SUCCESS! Score ${percentage.toFixed(1)}% (Rounded: ${roundedPercentage}%) >= 60% - Auto-unlocking next challenge`);
         
         const challengeContext = {
           unlocksNext: true,
@@ -1138,8 +1141,8 @@ const handleVoiceFeedback = async (comparisonResult, voiceEnabled, voiceManager,
         
       } 
       // NEAR SUCCESS: Score 40-59% - Motivational feedback
-      else if (percentage >= 40 && percentage < 60) {
-        console.log(`🔥 NEAR SUCCESS! Score ${percentage.toFixed(1)}% (40-59%) - Playing motivation`);
+      else if (roundedPercentage >= 40 && roundedPercentage < 60) {
+        console.log(`🔥 NEAR SUCCESS! Score ${percentage.toFixed(1)}% (Rounded: ${roundedPercentage}%) (40-59%) - Playing motivation`);
         
         const challengeContext = {
           unlocksNext: false,
@@ -1156,8 +1159,8 @@ const handleVoiceFeedback = async (comparisonResult, voiceEnabled, voiceManager,
         
       }
       // LOW SCORE: Score < 40% - Motivational retry feedback  
-      else if (percentage < 40) {
-        console.log(`🔄 LOW SCORE! Score ${percentage.toFixed(1)}% < 40% - Playing retry motivation`);
+      else if (roundedPercentage < 40) {
+        console.log(`🔄 LOW SCORE! Score ${percentage.toFixed(1)}% (Rounded: ${roundedPercentage}%) < 40% - Playing retry motivation`);
         
         await voiceManager.playMotivationVoice();
         console.log('🎵 Motivation voice played - encouraging user to try different approach');
@@ -1165,8 +1168,8 @@ const handleVoiceFeedback = async (comparisonResult, voiceEnabled, voiceManager,
       }
       // ALREADY AT FINAL CHALLENGE or ALREADY UNLOCKED
       else if (!hasNextChallenge || isNextAlreadyUnlocked) {
-        if (!hasNextChallenge && percentage >= 60) {
-          console.log(`🏆 FINAL CHALLENGE COMPLETED! Score ${percentage.toFixed(1)}% - Playing final celebration`);
+        if (!hasNextChallenge && roundedPercentage >= 60) {
+          console.log(`🏆 FINAL CHALLENGE COMPLETED! Score ${percentage.toFixed(1)}% (Rounded: ${roundedPercentage}%) - Playing final celebration`);
           await voiceManager.playFinalCelebrationVoice();
         } else {
           console.log(`✅ Challenge completed (already unlocked or final) - Playing success voice`);
@@ -1194,19 +1197,20 @@ const handleVoiceFeedback = async (comparisonResult, voiceEnabled, voiceManager,
     const currentChallengeIndex = shapes.findIndex(shape => shape.image === selectedImage);
     const score = comparisonResult.combined || comparisonResult.percentage / 100 || 0;
     const percentage = comparisonResult.percentage || score * 100 || 0;
+    const roundedPercentage = parseFloat(percentage.toFixed(2));
     const nextChallengeIndex = currentChallengeIndex + 1;
     const hasNextChallenge = nextChallengeIndex < shapes.length;
     const isCurrentUnlocked = unlockedShapes.includes(currentChallengeIndex);
     const isNextAlreadyUnlocked = unlockedShapes.includes(nextChallengeIndex);
     
     // Auto-progression even without voice
-    if (percentage >= 60 && hasNextChallenge && isCurrentUnlocked && !isNextAlreadyUnlocked) {
-      console.log(`🎉 Silent auto-progression: Score ${percentage.toFixed(1)}% >= 60%`);
+    if (roundedPercentage >= 60 && hasNextChallenge && isCurrentUnlocked && !isNextAlreadyUnlocked) {
+      console.log(`🎉 Silent auto-progression: Score ${percentage.toFixed(1)}% (Rounded: ${roundedPercentage}%) >= 60%`);
       
       // Save progress data for silent mode too
       const saveProgressData = (challengeIndex, score, percentage, generatedImageUrl = null, comparisonResultData = null) => {
         // Only save progress data for passing scores (≥60%)
-        if (percentage >= 60) {
+        if (roundedPercentage >= 60) {
           updateProgressData(prev => ({
             ...prev,
             [challengeIndex]: {
