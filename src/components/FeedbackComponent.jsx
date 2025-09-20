@@ -32,44 +32,27 @@ const formatDetailedScores = (scores) => {
 };
 
 const FeedbackComponent = React.memo(({ selectedImage, comparisonResult, isComparing }) => {
-  // DEBUG: Log all props received by FeedbackComponent
-  console.log("🔍 FeedbackComponent PROPS:", {
-    selectedImage: !!selectedImage,
-    comparisonResult,
-    isComparing,
-    hasError: comparisonResult?.error,
-    hasPercentage: comparisonResult?.percentage,
-    hasCombined: comparisonResult?.combined,
-    hasMsSSIM: comparisonResult?.ms_ssim
-  });
-  
   // Calculate progress percentages for horizontal bars
   const targetReadiness = selectedImage ? 100 : 0;
   
   // Convert the combined score to percentage with safe handling
   const matchLevel = (() => {
     if (!comparisonResult) {
-      console.log("🔍 FeedbackComponent - No comparison result");
       return 0;
     }
     
-    console.log("🔍 FeedbackComponent - Processing result:", comparisonResult);
-    
     // Handle direct result structure (MS-SSIM returns result directly)
     if (typeof comparisonResult.percentage === 'number' && !isNaN(comparisonResult.percentage)) {
-      console.log("🔍 FeedbackComponent - Using percentage:", comparisonResult.percentage);
       return Math.round(comparisonResult.percentage);
     }
     
     if (typeof comparisonResult.combined === 'number' && !isNaN(comparisonResult.combined)) {
       const percentage = Math.round(comparisonResult.combined * 100);
-      console.log("🔍 FeedbackComponent - Using combined:", comparisonResult.combined, "->", percentage);
       return percentage;
     }
     
     if (typeof comparisonResult.ms_ssim === 'number' && !isNaN(comparisonResult.ms_ssim)) {
       const percentage = Math.round(comparisonResult.ms_ssim * 100);
-      console.log("🔍 FeedbackComponent - Using ms_ssim:", comparisonResult.ms_ssim, "->", percentage);
       return percentage;
     }
     
@@ -79,7 +62,6 @@ const FeedbackComponent = React.memo(({ selectedImage, comparisonResult, isCompa
     
     if (typeof combined === 'number' && !isNaN(combined)) {
       const percentage = Math.round(combined * 100);
-      console.log("🔍 FeedbackComponent - Using nested combined:", combined, "->", percentage);
       return percentage;
     }
     
@@ -87,11 +69,9 @@ const FeedbackComponent = React.memo(({ selectedImage, comparisonResult, isCompa
                       comparisonResult.result?.result?.percentage;
     
     if (typeof percentage === 'number' && !isNaN(percentage)) {
-      console.log("🔍 FeedbackComponent - Using nested percentage:", percentage);
       return Math.round(percentage);
     }
     
-    console.log("🔍 FeedbackComponent - No valid score found, returning 0");
     return 0;
   })();
 
@@ -165,25 +145,7 @@ const FeedbackComponent = React.memo(({ selectedImage, comparisonResult, isCompa
     );
   }
 
-  console.log("🔍 FeedbackComponent CONDITION CHECK:", {
-    hasComparisonResult: !!comparisonResult,
-    hasError: !!comparisonResult?.error,
-    hasPercentage: typeof comparisonResult?.percentage === 'number',
-    hasCombined: typeof comparisonResult?.combined === 'number', 
-    hasMsSSIM: typeof comparisonResult?.ms_ssim === 'number',
-    percentageValue: comparisonResult?.percentage,
-    combinedValue: comparisonResult?.combined,
-    msssimValue: comparisonResult?.ms_ssim,
-    willShowSuccess: !!(comparisonResult && !comparisonResult.error && 
-      (comparisonResult.percentage || comparisonResult.combined || comparisonResult.ms_ssim))
-  });
-
   if (comparisonResult && !comparisonResult.error && (comparisonResult.percentage || comparisonResult.combined || comparisonResult.ms_ssim)) {
-    // Debug logging to understand the data structure
-    console.log("✅ FeedbackComponent - SUCCESS CONDITION MET! Showing results...");
-    console.log("🔍 FeedbackComponent - Full comparison result:", comparisonResult);
-    console.log("🔍 FeedbackComponent - Match level calculated:", matchLevel);
-    
     const quality = getQualityDescription(matchLevel);
     
     // Find detailed_scores in the result structure
@@ -191,7 +153,6 @@ const FeedbackComponent = React.memo(({ selectedImage, comparisonResult, isCompa
                               comparisonResult.result?.detailed_scores || 
                               {};
     
-    console.log("🔍 FeedbackComponent - Found detailed scores:", detailedScoresData);
     const detailedScores = formatDetailedScores(detailedScoresData);
     
     return (
@@ -381,9 +342,6 @@ const FeedbackComponent = React.memo(({ selectedImage, comparisonResult, isCompa
 
   // Fallback: If we have any comparison result with a valid numeric score, show it
   if (comparisonResult && matchLevel > 0 && !comparisonResult.error) {
-    console.log("⚠️ FeedbackComponent - Using FALLBACK condition for result with valid score");
-    console.log("🔍 FeedbackComponent - Fallback result:", comparisonResult);
-    
     const quality = getQualityDescription(matchLevel);
     const detailedScoresData = comparisonResult.detailed_scores || {};
     const detailedScores = formatDetailedScores(detailedScoresData);

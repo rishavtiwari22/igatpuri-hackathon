@@ -24,7 +24,6 @@ const generateWithClipDrop = async (prompt) => {
       const blob = new Blob([buffer], { type: 'image/png' });
       const imageUrl = URL.createObjectURL(blob);
       
-      console.log("ClipDrop image generated successfully");
       return imageUrl;
     } catch (error) {
       console.error("Error generating with ClipDrop:", error);

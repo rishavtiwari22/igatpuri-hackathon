@@ -23,7 +23,6 @@ const shapes = [
   { type: "triangle", left: "40%", rope: "rope-3", image: image3, name: "Mountain" },
   { type: "diamond", left: "55%", rope: "rope-4", image: image4, name: "Owl" },
   { type: "hexagon", left: "70%", rope: "rope-5", image: image5, name: "Sheep" },
-  { type: "star", left: "85%", rope: "rope-6", image: image1, name: "Car (Duplicate)" },
 ];
 
 
@@ -70,39 +69,48 @@ export default function HangingShapes() {
 
   // Set initial target image to the first unlocked shape
   useEffect(() => {
-    console.log("🔄 Initial setup - unlockedShapes:", unlockedShapes);
-    
     if (unlockedShapes.length > 0 && !isProgressLoading) {
       const firstUnlockedIndex = unlockedShapes[0];
-      console.log("🎯 Setting initial target to first unlocked shape:", firstUnlockedIndex, shapes[firstUnlockedIndex]?.name);
       
       if (shapes[firstUnlockedIndex]) {
         setSelectedImage(shapes[firstUnlockedIndex].image);
-        console.log("✅ Initial target image set to:", shapes[firstUnlockedIndex].name);
       }
-    } else if (!isProgressLoading) {
-      console.warn("⚠️ No unlocked shapes found during initialization");
     }
   }, [unlockedShapes, isProgressLoading]); // Now depends on both unlockedShapes and loading state
 
+  // Ensure first challenge is unlocked if no progress exists
+  useEffect(() => {
+    try {
+      if (typeof updateUnlockedShapes === 'function' && unlockedShapes.length === 0 && !isProgressLoading) {
+        // Only unlock the first challenge (index 0) if no progress exists
+        updateUnlockedShapes([0]);
+      }
+    } catch (err) {
+      console.warn('Failed to unlock first challenge:', err);
+    }
+  }, [updateUnlockedShapes, isProgressLoading]); // Remove unlockedShapes.length from dependencies to prevent infinite loop
+
+  // PRACTICE MODE: Unlock all challenges for practice (optional - comment out for sequential progression)
+  useEffect(() => {
+    try {
+      if (typeof updateUnlockedShapes === 'function' && !isProgressLoading && unlockedShapes.length <= 1) {
+        // Unlock all challenges for practice mode, but only if we haven't already done so
+        const allIndices = shapes.map((_, index) => index);
+        updateUnlockedShapes(allIndices);
+      }
+    } catch (err) {
+      console.warn('Failed to unlock all challenges for practice:', err);
+    }
+  }, [updateUnlockedShapes, isProgressLoading]); // Remove unlockedShapes from dependencies
+
   // Firebase sync status logging
   useEffect(() => {
-    if (user) {
-      console.log("🔍 Firebase sync status:");
-      console.log("  - User authenticated:", user.email);
-      console.log("  - Progress loading:", isProgressLoading);
-      console.log("  - Progress saving:", isProgressSaving);
-      console.log("  - Sync error:", syncError);
-      console.log("  - unlockedShapes from Firebase:", unlockedShapes);
-      console.log("  - progressData from Firebase:", Object.keys(progressData));
-    } else {
-      console.log("👤 No user authenticated - using guest mode");
-    }
+    // Reduced excessive sync status logging for production
   }, [user, isProgressLoading, isProgressSaving, syncError, unlockedShapes, progressData]);
 
   // Debug: Track AIGeneratedimg state changes
   useEffect(() => {
-    console.log("🔍 AIGeneratedimg state changed:", AIGeneratedimg);
+    // Removed excessive state change logging
   }, [AIGeneratedimg]);
 
   // Cleanup: Stop voice when component unmounts
@@ -110,12 +118,10 @@ export default function HangingShapes() {
     return () => {
       if (isVoicePlaying) {
         voiceManager.stopCurrentAudio();
-        console.log("🎵 Voice stopped on component unmount");
       }
       // Cleanup blob URLs to prevent memory leaks
       if (AIGeneratedimg && AIGeneratedimg.startsWith('blob:')) {
         URL.revokeObjectURL(AIGeneratedimg);
-        console.log("🧙 Cleaned up blob URL on unmount");
       }
     };
   }, [isVoicePlaying, AIGeneratedimg]);
@@ -129,9 +135,7 @@ export default function HangingShapes() {
       const timer = setTimeout(async () => {
         try {
           setIsVoicePlaying(true);
-          console.log('🎵 Playing startup voice with alternation...');
           await voiceManager.playStartupVoice();
-          console.log("🎵 Startup voice played successfully");
           sessionStorage.setItem('hasPlayedStartupVoice', 'true');
         } catch (error) {
           console.warn("🎵 Startup voice failed:", error);
@@ -144,426 +148,105 @@ export default function HangingShapes() {
     }
   }, []); // Only run once on mount
 
-  // Debug: Log voice status periodically (for development)
-  useEffect(() => {
-    if (process.env.NODE_ENV === 'development') {
-      const interval = setInterval(() => {
-        const status = voiceManager.getVoiceAlternationStatus();
-        console.log('📊 Voice Status:', status);
-      }, 10000); // Log every 10 seconds
-      
-      return () => clearInterval(interval);
-    }
-  }, []);
 
-  // Expose voice testing functions to window for easy console testing
-  useEffect(() => {
-    if (process.env.NODE_ENV === 'development') {
-      window.testVoices = {
-        playStartup: () => voiceManager.playStartupVoice(),
-        playGenerating: () => voiceManager.playGeneratingVoice(),
-        playSuccess: () => voiceManager.playSuccessVoice(),
-        playMotivation: () => voiceManager.playMotivationVoice(),
-        playUnlock: () => voiceManager.playUnlockVoice(),
-        playNearSuccess: () => voiceManager.playNearSuccessVoice(),
-        playCreative: () => voiceManager.playCreativeVoice(),
-        playMilestone: () => voiceManager.playMilestoneVoice(),
-        playFinalCelebration: () => voiceManager.playFinalCelebrationVoice(),
-        playWelcome: () => voiceManager.playWelcomeVoice(),
-        getStatus: () => voiceManager.getVoiceAlternationStatus(),
-        testCategory: (category, times = 4) => {
-          console.log(`🎵 Testing ${category} alternation ${times} times...`);
-          let count = 0;
-          const testInterval = setInterval(async () => {
-            if (count >= times) {
-              clearInterval(testInterval);
-              console.log(`🎵 ${category} test completed!`);
-              return;
-            }
-            count++;
-            console.log(`🎵 ${category} test ${count}/${times}`);
-            try {
-              await window.testVoices[`play${category.charAt(0).toUpperCase() + category.slice(1)}`]();
-              console.log(`✅ ${category} voice ${count} played successfully`);
-            } catch (error) {
-              console.error(`❌ ${category} voice ${count} failed:`, error);
-            }
-          }, 4000);
-        },
-        resetStartup: () => {
-          sessionStorage.removeItem('hasPlayedStartupVoice');
-          console.log('🎵 Startup voice flag reset - refresh to test again');
-        },
-        // Add MS-SSIM testing function
-        testComparison: async () => {
-          console.log('🧪 Testing MS-SSIM comparison with current images...');
-          if (selectedImage && AIGeneratedimg) {
-            try {
-              const result = await handleComparison(AIGeneratedimg, selectedImage);
-              console.log('🧪 Test comparison result:', result);
-              return result;
-            } catch (error) {
-              console.error('🧪 Test comparison failed:', error);
-              return { error: error.message };
-            }
-          } else {
-            console.warn('🧪 No images available for testing. Generate an image first.');
-            return { error: 'No images available' };
-          }
-        },
-        
-        testSimpleComparison: async () => {
-          console.log('🧪 Testing with simple identical images...');
-          
-          // Create two identical simple images
-          const canvas1 = document.createElement('canvas');
-          canvas1.width = 100;
-          canvas1.height = 100;
-          const ctx1 = canvas1.getContext('2d');
-          ctx1.fillStyle = 'red';
-          ctx1.fillRect(0, 0, 100, 100);
-          const dataUrl1 = canvas1.toDataURL();
-          
-          const canvas2 = document.createElement('canvas');
-          canvas2.width = 100;
-          canvas2.height = 100;
-          const ctx2 = canvas2.getContext('2d');
-          ctx2.fillStyle = 'red';
-          ctx2.fillRect(0, 0, 100, 100);
-          const dataUrl2 = canvas2.toDataURL();
-          
-          try {
-            const result = await handleComparison(dataUrl1, dataUrl2);
-            console.log('✅ Simple test result:', result);
-            return result;
-          } catch (error) {
-            console.error('❌ Simple test failed:', error);
-            return { error: error.message };
-          }
-        },
-        
-        // Add simple image loading test
-        testImageLoading: async () => {
-          console.log('🧪 Testing image loading functionality...');
-          try {
-            // Test with a simple image URL
-            const testUrl = "https://image.pollinations.ai/prompt/red%20car";
-            console.log('🧪 Testing with URL:', testUrl);
-            
-            const img = new Image();
-            img.crossOrigin = "anonymous";
-            
-            return new Promise((resolve) => {
-              img.onload = () => {
-                console.log('✅ Test image loaded successfully:', img.width, 'x', img.height);
-                resolve({ success: true, width: img.width, height: img.height });
-              };
-              img.onerror = (error) => {
-                console.error('❌ Test image loading failed:', error);
-                resolve({ success: false, error: error.message || 'Unknown error' });
-              };
-              img.src = testUrl;
-              
-              // Timeout after 10 seconds
-              setTimeout(() => {
-                console.warn('⏰ Test image loading timed out');
-                resolve({ success: false, error: 'Timeout' });
-              }, 10000);
-            });
-          } catch (error) {
-            console.error('🧪 Image loading test failed:', error);
-            return { error: error.message };
-          }
-        },
-        // Add comprehensive debugging function
-        fullDebugTest: async () => {
-          console.log('🔬 Starting comprehensive debug test...');
-          
-          // Test 1: Environment check
-          console.log('📋 Environment Check:');
-          console.log('- selectedImage:', selectedImage);
-          console.log('- AIGeneratedimg:', AIGeneratedimg);
-          console.log('- Browser:', navigator.userAgent);
-          console.log('- Date:', new Date().toISOString());
-          
-          // Test 2: Basic URL test
-          console.log('🌐 Testing basic image URL...');
-          try {
-            const testResult = await window.testVoices.testImageLoading();
-            console.log('✅ Basic URL test result:', testResult);
-          } catch (error) {
-            console.error('❌ Basic URL test failed:', error);
-          }
-          
-          // Test 3: MS-SSIM import test
-          console.log('📦 Testing MS-SSIM imports...');
-          try {
-            const { computeMSSSIM } = await import('../utils/imageComparison');
-            console.log('✅ MS-SSIM import successful');
-            
-            // Test with two identical simple images
-            const canvas1 = document.createElement('canvas');
-            canvas1.width = 100;
-            canvas1.height = 100;
-            const ctx1 = canvas1.getContext('2d');
-            ctx1.fillStyle = 'red';
-            ctx1.fillRect(0, 0, 100, 100);
-            const dataUrl1 = canvas1.toDataURL();
-            
-            const canvas2 = document.createElement('canvas');
-            canvas2.width = 100;
-            canvas2.height = 100;
-            const ctx2 = canvas2.getContext('2d');
-            ctx2.fillStyle = 'red';
-            ctx2.fillRect(0, 0, 100, 100);
-            const dataUrl2 = canvas2.toDataURL();
-            
-            console.log('🧪 Testing MS-SSIM with identical red squares...');
-            const ssimResult = await computeMSSSIM(dataUrl1, dataUrl2, 3);
-            console.log('✅ SSIM test result:', ssimResult);
-            
-            if (ssimResult.error) {
-              console.error('❌ SSIM computation had errors:', ssimResult.error);
-            } else {
-              console.log('🎯 SSIM percentage:', ssimResult.percentage);
-            }
-            
-          } catch (error) {
-            console.error('❌ MS-SSIM import or computation failed:', error);
-          }
-          
-          // Test 4: Full comparison test (if images available)
-          if (selectedImage && AIGeneratedimg) {
-            console.log('🔍 Testing full comparison with current images...');
-            try {
-              const comparisonResult = await window.testVoices.testComparison();
-              console.log('✅ Full comparison result:', comparisonResult);
-            } catch (error) {
-              console.error('❌ Full comparison failed:', error);
-            }
-          } else {
-            console.log('⚠️ Skipping full comparison test - no images available');
-          }
-          
-          console.log('🔬 Comprehensive debug test completed');
-        },
-        
-        // NEW: Test auto-progression with different score ranges
-        testAutoProgression: async (mockScore) => {
-          console.log(`🧪 Testing auto-progression with mock score: ${mockScore}%`);
-          
-          if (!selectedImage) {
-            console.warn('⚠️ No selected image for progression test');
-            return;
-          }
-          
-          // Create mock comparison result
-          const mockResult = {
-            percentage: mockScore,
-            combined: mockScore / 100,
-            ms_ssim: mockScore / 100,
-            detailed_scores: {
-              structural: mockScore * 0.9,
-              edges: mockScore * 0.8,
-              colors: mockScore * 1.1,
-              hog_features: mockScore * 0.95,
-              histogram: mockScore * 0.85,
-              hsv_similarity: mockScore * 0.92
-            },
-            method: 'test_mock'
-          };
-          
-          console.log('🎭 Mock result created:', mockResult);
-          console.log('🎵 Testing voice feedback and progression...');
-          
-          // Test the progression logic
-          try {
-            await handleVoiceFeedback(
-              mockResult,
-              voiceEnabled,
-              voiceManager,
-              setIsVoicePlaying,
-              selectedImage,
-              shapes,
-              unlockedShapes,
-              setUnlockedShapes,
-              setShowUnlockNotification,
-              setSelectedImage,
-              AIGeneratedimg
-            );
-            
-            console.log('✅ Auto-progression test completed');
-          } catch (error) {
-            console.error('❌ Auto-progression test failed:', error);
-          }
-        },
-      };
-      
-      console.log('🎵 Voice testing functions added to window.testVoices');
-      console.log('Usage: window.testVoices.testCategory("success", 4)');
-      console.log('🧪 MS-SSIM testing: window.testVoices.testComparison()');
-      console.log('🧪 Image loading test: window.testVoices.testImageLoading()');
-      console.log('🔬 Full debug test: window.testVoices.fullDebugTest()');
-      console.log('🎯 Auto-progression test: window.testVoices.testAutoProgression(65) // Test with 65% score');
-      console.log('   - Try: testAutoProgression(75) for success, testAutoProgression(50) for near-success, testAutoProgression(30) for retry');
-    }
-  }, [selectedImage, AIGeneratedimg]);
-
-  // Debug function to test image display directly
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      window.debugImageGeneration = {
-        testImageDisplay: (testUrl = "https://image.pollinations.ai/prompt/a%20red%20car") => {
-          console.log("🧪 Testing image display with URL:", testUrl);
-          console.log("🧪 Current state before test:");
-          console.log("  - AIGeneratedimg:", AIGeneratedimg);
-          console.log("  - isGenerating:", isGenerating);
-          console.log("  - isImageLoading:", isImageLoading);
-          
-          setAIGeneratedimg(testUrl);
-          setIsGenerating(false);
-          setIsImageLoading(false);
-          
-          console.log("🧪 State set - image should now be displayed");
-        },
-        
-        getCurrentState: () => {
-          return {
-            AIGeneratedimg,
-            isGenerating,
-            isImageLoading,
-            selectedImage,
-            prompt
-          };
-        },
-        
-        resetState: () => {
-          setAIGeneratedimg(null);
-          setIsGenerating(false);
-          setIsImageLoading(false);
-          setResult(null);
-          console.log("🧪 State reset");
-        }
-      };
-      
-      console.log("🧪 Debug functions added to window.debugImageGeneration");
-      console.log("Usage:");
-      console.log("  - window.debugImageGeneration.testImageDisplay() // Test with default URL");
-      console.log("  - window.debugImageGeneration.getCurrentState() // Check current state");
-      console.log("  - window.debugImageGeneration.resetState() // Reset all states");
-    }
-  }, [AIGeneratedimg, isGenerating, isImageLoading, selectedImage, prompt]);
 
   const handleShapeClick = (image, index) => {
-    if (unlockedShapes.includes(index)) {
-      // Stop any ongoing voice
-      if (isVoicePlaying) {
-        voiceManager.stopCurrentAudio();
-        setIsVoicePlaying(false);
-      }
-      
-      const shape = shapes[index];
-      setSelectedImage(image); // Set the target image
-      setHasComparedCurrentGeneration(false); // Reset comparison flag for new target
-      playClickSound(); // Play click sound when shape is successfully clicked
-      
-      // Restore stored generated image and comparison result if available
-      const storedProgress = progressData[index];
-      if (storedProgress && storedProgress.generatedImage) {
-        console.log(`🖼️ Restoring generated image for ${shape.name}:`, storedProgress.generatedImage);
-        setAIGeneratedimg(storedProgress.generatedImage);
-        
-        // Also restore the comparison result/feedback if available
-        if (storedProgress.lastComparisonResult) {
-          console.log(`📊 Restoring comparison result for ${shape.name}:`, storedProgress.lastComparisonResult);
-          setResult(storedProgress.lastComparisonResult);
-          // Set flag to indicate this generation has been compared
-          setHasComparedCurrentGeneration(true);
-        } else {
-          // Clear result if no stored comparison result
-          setResult(null);
-        }
-      } else {
-        // Clear generated image and result for clean slate
-        setAIGeneratedimg(null);
-        setResult(null);
-      }
-      setPrompt("");
-      
-      console.log(`🎯 Hanging shape ${shape.name} clicked! Setting target image:`, image);
-      console.log(`📊 Challenge switched to: ${shape.name}.`);
-      
-      // Show progress data if available
-      if (progressData[index]) {
-        const data = progressData[index];
-        console.log(`📈 Progress for ${shape.name}:`, {
-          bestScore: `${data.bestScore.toFixed(1)}%`,
-          attempts: data.attempts,
-          completed: data.completed,
-          lastAttempt: new Date(data.lastAttemptAt).toLocaleString(),
-          hasStoredImage: !!data.generatedImage,
-          hasStoredResult: !!data.lastComparisonResult
-        });
-      }
+    // Normalize index and unlockedShapes to numbers to avoid string/number mismatch
+    const numericIndex = Number(index);
+    const unlockedArr = Array.isArray(unlockedShapes) ? unlockedShapes.map(Number) : [];
+    const isUnlocked = unlockedArr.includes(numericIndex);
+
+    // PRACTICE MODE: Allow clicking any shape (comment out the return statement below for sequential mode)
+    // if (!isUnlocked) {
+    //   console.log(`🔒 Shape ${shapes[numericIndex]?.name || numericIndex} is locked! Complete previous challenges to unlock.`);
+    //   return; // Block the click for locked challenges
+    // }
+
+    // SEQUENTIAL MODE: Only allow clicking unlocked challenges (uncomment the lines above for this mode)
+    // Currently in practice mode - all shapes are clickable
+
+    // Stop any ongoing voice
+    if (isVoicePlaying) {
+      try { voiceManager.stopCurrentAudio(); } catch (e) { console.warn('Failed to stop voice:', e); }
+      setIsVoicePlaying(false);
+    }
+
+    const shape = shapes[numericIndex] || shapes[index];
+
+    // Allow selecting shape
+    setSelectedImage(image);
+    setHasComparedCurrentGeneration(false);
+    try { playClickSound(); } catch (e) { /* ignore sound errors */ }
+
+    // Restore stored generated image and comparison result if available
+    const storedProgress = progressData && progressData[numericIndex];
+    if (storedProgress && storedProgress.generatedImage) {
+      setAIGeneratedimg(storedProgress.generatedImage);
+      setResult(storedProgress.lastComparisonResult || null);
     } else {
-      console.log("Shape is locked");
+      setAIGeneratedimg(null);
+      setResult(null);
+    }
+
+    setPrompt("");
+
+    if (!isUnlocked) {
+      // Practice mode - shape was previously locked but opened for practice
+    }
+
+    // Show progress data if available
+    if (progressData && progressData[numericIndex]) {
+      // Progress data available for this challenge
     }
   };
 
   // Handle shape navigation from progress tracker
   const handleProgressShapeClick = (index) => {
-    if (unlockedShapes.includes(index)) {
-      // Stop any ongoing voice
-      if (isVoicePlaying) {
-        voiceManager.stopCurrentAudio();
-        setIsVoicePlaying(false);
-      }
-      
-      const shape = shapes[index];
-      setSelectedImage(shape.image);
-      setHasComparedCurrentGeneration(false);
-      playClickSound();
-      
-      // Restore stored generated image and comparison result if available
-      const storedProgress = progressData[index];
-      if (storedProgress && storedProgress.generatedImage) {
-        console.log(`🖼️ Restoring generated image for ${shape.name}:`, storedProgress.generatedImage);
-        setAIGeneratedimg(storedProgress.generatedImage);
-        
-        // Also restore the comparison result/feedback if available
-        if (storedProgress.lastComparisonResult) {
-          console.log(`📊 Restoring comparison result for ${shape.name}:`, storedProgress.lastComparisonResult);
-          setResult(storedProgress.lastComparisonResult);
-          // Set flag to indicate this generation has been compared
-          setHasComparedCurrentGeneration(true);
-        } else {
-          // Clear result if no stored comparison result
-          setResult(null);
-        }
-      } else {
-        // Clear generated image and result for clean slate
-        setAIGeneratedimg(null);
-        setResult(null);
-      }
-      setPrompt("");
-      
-      console.log(`🎯 Progress shape ${shape.name} (${index}) clicked! Navigating to challenge:`, shape.image);
-      console.log(`📊 Challenge switched to: ${shape.name}.`);
-      
-      // Show progress data if available
-      if (progressData[index]) {
-        const data = progressData[index];
-        console.log(`📈 Progress for ${shape.name}:`, {
-          bestScore: `${data.bestScore.toFixed(1)}%`,
-          attempts: data.attempts,
-          completed: data.completed,
-          lastAttempt: new Date(data.lastAttemptAt).toLocaleString(),
-          hasStoredImage: !!data.generatedImage,
-          hasStoredResult: !!data.lastComparisonResult
-        });
-      }
+    const numericIndex = Number(index);
+    const unlockedArr = Array.isArray(unlockedShapes) ? unlockedShapes.map(Number) : [];
+    const isUnlocked = unlockedArr.includes(numericIndex);
+
+    // PRACTICE MODE: Allow clicking any shape from progress tracker (comment out the return statement below for sequential mode)
+    // if (!isUnlocked) {
+    //   console.log(`🔒 Progress tracker: Shape ${shapes[numericIndex]?.name || numericIndex} is locked! Complete previous challenges to unlock.`);
+    //   return; // Block the click for locked challenges
+    // }
+
+    // SEQUENTIAL MODE: Only allow clicking unlocked challenges (uncomment the lines above for this mode)
+    // Currently in practice mode - all shapes are clickable
+
+    // Stop any ongoing voice
+    if (isVoicePlaying) {
+      try { voiceManager.stopCurrentAudio(); } catch (e) { console.warn('Failed to stop voice:', e); }
+      setIsVoicePlaying(false);
+    }
+
+    const shape = shapes[numericIndex] || shapes[index];
+
+    // Navigate to challenge
+    setSelectedImage(shape.image);
+    setHasComparedCurrentGeneration(false);
+    try { playClickSound(); } catch (e) { /* ignore sound errors */ }
+
+    // Restore stored generated image and comparison result if available
+    const storedProgress = progressData && progressData[numericIndex];
+    if (storedProgress && storedProgress.generatedImage) {
+      setAIGeneratedimg(storedProgress.generatedImage);
+      setResult(storedProgress.lastComparisonResult || null);
     } else {
-      console.log(`🔒 Shape ${shapes[index].name} is locked`);
+      setAIGeneratedimg(null);
+      setResult(null);
+    }
+
+    setPrompt("");
+
+    if (!isUnlocked) {
+      // Practice mode - shape was previously locked but opened for practice
+    }
+
+    // Show progress data if available
+    if (progressData && progressData[numericIndex]) {
+      // Progress data available for this challenge
     }
   };
 
@@ -571,7 +254,6 @@ export default function HangingShapes() {
 
   // Loader Component
   const LoaderComponent = () => {
-    console.log("⌛ Loader component rendered - isGenerating:", isGenerating);
     return (
       <motion.div 
         className="loader-container"
@@ -607,8 +289,6 @@ export default function HangingShapes() {
     );
   };
   const generate_img = async (prompt) => {
-    console.log("🎨 Starting image generation with prompt:", prompt);
-    
     try {
       // Use the simplified generation pattern with better error handling
       const width = 1024;
@@ -639,7 +319,6 @@ export default function HangingShapes() {
       // Try each URL format
       for (let i = 0; i < urlFormats.length; i++) {
         const imageUrl = urlFormats[i]();
-        console.log(`🔄 Trying URL format ${i + 1}/${urlFormats.length}:`, imageUrl);
         
         try {
           // Test if the URL is accessible
@@ -648,20 +327,16 @@ export default function HangingShapes() {
             testImg.crossOrigin = "anonymous";
             
             const timeout = setTimeout(() => {
-              console.warn(`⏰ URL format ${i + 1} timed out after 8 seconds`);
               resolve(false);
             }, 8000); // Increased to 8 seconds to allow for generation time
             
             testImg.onload = () => {
               clearTimeout(timeout);
-              console.log(`✅ URL format ${i + 1} verified and accessible:`, imageUrl);
               resolve(true);
             };
             
             testImg.onerror = (error) => {
               clearTimeout(timeout);
-              console.warn(`❌ URL format ${i + 1} failed:`, error);
-              console.warn(`❌ Failed URL was:`, imageUrl);
               resolve(false);
             };
             
@@ -669,11 +344,10 @@ export default function HangingShapes() {
           });
           
           if (isAccessible) {
-            console.log("✅ Found working image URL:", imageUrl);
             return imageUrl;
           }
         } catch (error) {
-          console.warn(`❌ Error testing URL format ${i + 1}:`, error);
+          // Continue to next format
         }
       }
       
@@ -690,7 +364,6 @@ export default function HangingShapes() {
 // Helper function to validate generation prerequisites
 const canStartGeneration = (prompt, isGenerating) => {
   if (!prompt.trim() || isGenerating) {
-    console.log("⚠️ Generation blocked - empty prompt or already generating");
     return false;
   }
   return true;
@@ -701,7 +374,6 @@ const stopOngoingVoice = (isVoicePlaying, voiceManager, setIsVoicePlaying) => {
   if (isVoicePlaying) {
     voiceManager.stopCurrentAudio();
     setIsVoicePlaying(false);
-    console.log("🎵 Stopped voice for new generation");
   }
 };
 
@@ -709,7 +381,6 @@ const stopOngoingVoice = (isVoicePlaying, voiceManager, setIsVoicePlaying) => {
 const cleanupPreviousResources = (AIGeneratedimg) => {
   if (AIGeneratedimg && AIGeneratedimg.startsWith('blob:')) {
     URL.revokeObjectURL(AIGeneratedimg);
-    console.log("🧙 Cleaned up previous blob URL");
   }
 };
 
@@ -723,7 +394,6 @@ const resetGenerationState = (setters) => {
     setHasComparedCurrentGeneration
   } = setters;
 
-  console.log("🚀 Starting new image generation - Resetting comparison flag");
   setIsGenerating(true);
   setIsImageLoading(true);
   setAIGeneratedimg(null);
@@ -740,18 +410,12 @@ const playGenerationSoundAndVoice = async (playGenerationStartSound, voiceManage
     // Play generating voice if voice is enabled
     if (voiceEnabled) {
       setIsVoicePlaying(true);
-      console.log('🎵 Starting generation voice with alternation...');
       
       setTimeout(async () => {
         try {
           await voiceManager.playGeneratingVoice();
-          console.log("🎵 Generating voice played successfully");
-          
-          // Log current voice status after playing
-          const status = voiceManager.getVoiceAlternationStatus();
-          console.log('📊 Generating voice status:', status.generating);
         } catch (error) {
-          console.warn("🎵 Generating voice failed:", error);
+          console.warn("Generating voice failed:", error);
         } finally {
           setIsVoicePlaying(false);
         }
@@ -769,10 +433,8 @@ const generateImageByModel = async (selectedModel, prompt, generate_img, generat
   
   try {
     if (selectedModel === "pollinations") {
-      console.log("📸 Generating with Pollinations AI...");
       imageUrl = await generate_img(prompt);
     } else if (selectedModel === "clipdrop") {
-      console.log("📸 Generating with ClipDrop AI...");
       imageUrl = await generateWithClipDrop(prompt);
     } else {
       throw new Error(`Unknown model: ${selectedModel}`);
@@ -780,28 +442,24 @@ const generateImageByModel = async (selectedModel, prompt, generate_img, generat
     
     return imageUrl;
   } catch (error) {
-    console.error(`❌ ${selectedModel} generation failed:`, error);
+    console.error(`${selectedModel} generation failed:`, error);
     
     // If Pollinations fails, automatically try ClipDrop as fallback
     if (selectedModel === "pollinations") {
-      console.log("🔄 Pollinations failed, trying ClipDrop as fallback...");
       try {
         imageUrl = await generateWithClipDrop(prompt);
-        console.log("✅ ClipDrop fallback successful!");
         return imageUrl;
       } catch (fallbackError) {
-        console.error("❌ ClipDrop fallback also failed:", fallbackError);
+        console.error("ClipDrop fallback also failed:", fallbackError);
         throw new Error("Both Pollinations and ClipDrop failed");
       }
     } else {
       // If ClipDrop fails, try Pollinations as fallback
-      console.log("🔄 ClipDrop failed, trying Pollinations as fallback...");
       try {
         imageUrl = await generate_img(prompt);
-        console.log("✅ Pollinations fallback successful!");
         return imageUrl;
       } catch (fallbackError) {
-        console.error("❌ Pollinations fallback also failed:", fallbackError);
+        console.error("Pollinations fallback also failed:", fallbackError);
         throw new Error("Both ClipDrop and Pollinations failed");
       }
     }
@@ -813,7 +471,6 @@ const handleImageLoadingAndComparison = (imageUrl, setters, comparisonParams) =>
   const { setAIGeneratedimg, setIsImageLoading, setHasComparedCurrentGeneration } = setters;
   const { selectedImage, handleComparison, setIsComparing, setResult, voiceEnabled, voiceManager, setIsVoicePlaying } = comparisonParams;
   
-  console.log("✅ Image generation successful - displaying immediately");
   setAIGeneratedimg(imageUrl);
   
   // Set isImageLoading to false immediately so the image can be displayed
@@ -823,11 +480,8 @@ const handleImageLoadingAndComparison = (imageUrl, setters, comparisonParams) =>
   // Always check if we have selectedImage for comparison, ignore hasComparedCurrentGeneration flag here
   // since we already reset it at the start of generation
   if (selectedImage) {
-    console.log("🔍 Selected image found, starting comparison flow...");
     setHasComparedCurrentGeneration(true);
     handleImageComparisonFlow(imageUrl, setIsImageLoading, comparisonParams);
-  } else {
-    console.log("📷 No selected image, skipping comparison. Image should now be displayed.");
   }
 };
 
@@ -835,18 +489,14 @@ const handleImageLoadingAndComparison = (imageUrl, setters, comparisonParams) =>
 const handleImageComparisonFlow = (imageUrl, setIsImageLoading, comparisonParams) => {
   const { selectedImage, handleComparison, setIsComparing, setResult, voiceEnabled, voiceManager, setIsVoicePlaying, shapes, unlockedShapes, updateUnlockedShapes, setShowUnlockNotification, setSelectedImage: setSelectedImageFunc, updateProgressData, setPrompt, setAIGeneratedimg, setHasComparedCurrentGeneration, setIsAutoProgressing, setUnlockNotificationData } = comparisonParams;
   
-  console.log("🔄 Waiting for image to load before comparison...");
-  
   const img = new Image();
   img.onload = async () => {
-    console.log("🖼️ Image fully loaded, starting comparison...");
     setIsImageLoading(false);
     await performComparison(imageUrl, selectedImage, handleComparison, setIsComparing, setResult, voiceEnabled, voiceManager, setIsVoicePlaying, shapes, unlockedShapes, updateUnlockedShapes, setShowUnlockNotification, setSelectedImageFunc, updateProgressData, setPrompt, setAIGeneratedimg, setHasComparedCurrentGeneration, setIsAutoProgressing, setUnlockNotificationData);
   };
   
   img.onerror = () => {
     console.error("❌ Failed to load generated image for comparison");
-    console.log("🔄 Attempting to skip comparison and display image anyway...");
     setResult({ error: "Failed to load image for comparison, but image may still be visible", combined: 0 });
     setIsComparing(false);
     setIsImageLoading(false);
@@ -860,10 +510,6 @@ const performComparison = async (imageUrl, selectedImage, handleComparison, setI
   try {
     setIsComparing(true);
     const comparisonResult = await handleComparison(imageUrl, selectedImage);
-    
-    console.log("🔍 Raw comparison result:", comparisonResult);
-    console.log("🔍 Comparison result type:", typeof comparisonResult);
-    console.log("🔍 Comparison result keys:", Object.keys(comparisonResult || {}));
     
     // Save progress data for ALL attempts (not just successful auto-progression)
     const currentChallengeIndex = shapes.findIndex(shape => shape.image === selectedImage);
@@ -905,16 +551,6 @@ const performComparison = async (imageUrl, selectedImage, handleComparison, setI
       const hasValidMsSSIM = typeof comparisonResult.ms_ssim === 'number' && !isNaN(comparisonResult.ms_ssim);
       const hasAnyResult = comparisonResult.result;
       
-      console.log("🔍 Validation checks:", {
-        hasValidPercentage,
-        hasValidCombined, 
-        hasValidMsSSIM,
-        hasAnyResult,
-        percentageValue: comparisonResult.percentage,
-        combinedValue: comparisonResult.combined,
-        msssimValue: comparisonResult.ms_ssim
-      });
-      
       if (hasValidPercentage || hasValidCombined || hasValidMsSSIM || hasAnyResult) {
         // Normalize the result structure for the UI
         const normalizedResult = {
@@ -932,8 +568,6 @@ const performComparison = async (imageUrl, selectedImage, handleComparison, setI
           saveProgressData(currentChallengeIndex, normalizedResult.percentage, currentGeneratedImage, normalizedResult);
         }
         
-        console.log("✅ Comparison completed successfully:", normalizedResult);
-        console.log("🎯 Setting result state with:", normalizedResult);
         setResult(normalizedResult);
         
         // Check for auto-progression FIRST (regardless of voice)
@@ -968,32 +602,42 @@ const handleAutoProgression = async (comparisonResult, currentChallengeIndex, sh
   const isCurrentUnlocked = unlockedShapes.includes(currentChallengeIndex);
   const isNextAlreadyUnlocked = unlockedShapes.includes(nextChallengeIndex);
   
-  console.log(`🔍 Auto-progression check: Score ${percentage}%, Rounded: ${roundedPercentage}%, Current: ${currentChallengeIndex}, Next: ${nextChallengeIndex}, Has next: ${hasNextChallenge}, Next unlocked: ${isNextAlreadyUnlocked}`);
-  
-  // AUTO-UNLOCK: Score >= 60% - Immediately unlock next challenge
-  if (roundedPercentage >= 60 && hasNextChallenge && isCurrentUnlocked && !isNextAlreadyUnlocked) {
-    console.log(`🎉 AUTO-UNLOCK TRIGGERED! Score ${percentage.toFixed(1)}% (Rounded: ${roundedPercentage}%) >= 60% - Processing unlock...`);
+  // AUTO-PROGRESSION: Score >= 60% - Move to next challenge (works in both modes)
+  if (roundedPercentage >= 60 && hasNextChallenge) {
     
-    // Step 1: Unlock the next challenge immediately
-    updateUnlockedShapes(prev => {
-      const newUnlocked = [...prev, nextChallengeIndex];
-      console.log("✅ Unlocked shapes updated:", newUnlocked);
-      return newUnlocked;
-    });
+    if (!isNextAlreadyUnlocked) {
+      // SEQUENTIAL MODE: Unlock and progress
+      
+      // Step 1: Unlock the next challenge immediately
+      updateUnlockedShapes(prev => {
+        const prevArr = Array.isArray(prev) ? prev : (prev ? Object.values(prev).map(Number) : []);
+        const merged = Array.from(new Set([...prevArr, nextChallengeIndex]));
+        return merged;
+      });
+      
+      // Step 2: Show notification
+      setUnlockNotificationData({
+        type: 'auto',
+        score: percentage,
+        challengeName: shapes[nextChallengeIndex].name
+      });
+      setShowUnlockNotification(true);
+      
+    } else {
+      // PRACTICE MODE: All unlocked, just show success and progress
+      
+      // Show success notification
+      setUnlockNotificationData({
+        type: 'auto',
+        score: percentage,
+        challengeName: shapes[nextChallengeIndex].name
+      });
+      setShowUnlockNotification(true);
+    }
     
-    // Step 2: Show notification
-    setUnlockNotificationData({
-      type: 'auto',
-      score: percentage,
-      challengeName: shapes[nextChallengeIndex].name
-    });
-    setShowUnlockNotification(true);
-    
-    console.log(`🔓 Challenge "${shapes[nextChallengeIndex].name}" unlocked! Notification shown.`);
-    
-    // Step 3: Auto-progress after 3 seconds
+    // Step 3: Auto-progress after 3 seconds (same for both modes)
     setTimeout(() => {
-      console.log(`🎯 Starting auto-progression to: ${shapes[nextChallengeIndex].name}`);
+      setIsAutoProgressing(true);
       
       // Switch to next challenge
       setSelectedImage(shapes[nextChallengeIndex].image);
@@ -1004,20 +648,11 @@ const handleAutoProgression = async (comparisonResult, currentChallengeIndex, sh
       setAIGeneratedimg(null);
       setHasComparedCurrentGeneration(false);
       
-      console.log(`✅ Auto-progressed to challenge: ${shapes[nextChallengeIndex].name}`);
-      console.log(`🎯 Target image set to:`, shapes[nextChallengeIndex].image);
-      
       // Hide notification
       setShowUnlockNotification(false);
+      setIsAutoProgressing(false);
       
     }, 3000); // 3 second delay for auto-progression
-    
-  } else if (percentage >= 60 && !hasNextChallenge) {
-    console.log(`🏆 FINAL CHALLENGE COMPLETED! Score ${percentage.toFixed(1)}% - No more challenges`);
-  } else if (percentage >= 60 && isNextAlreadyUnlocked) {
-    console.log(`✅ Great score ${percentage.toFixed(1)}% but next challenge already unlocked`);
-  } else {
-    console.log(`📊 Score ${percentage.toFixed(1)}% - Need 60%+ to unlock next challenge`);
   }
 };
 
@@ -1061,8 +696,6 @@ const handleVoiceFeedback = async (comparisonResult, voiceEnabled, voiceManager,
       // Save progress for current challenge
       saveProgressData(currentChallengeIndex, score, percentage, AIGeneratedimg, comparisonResult);
       
-      console.log(`🎵 Playing contextual voice for ${percentage.toFixed(1)}% (Rounded: ${roundedPercentage}%) similarity with alternation...`);
-      
       // Determine progression logic
       const nextChallengeIndex = currentChallengeIndex + 1;
       const hasNextChallenge = nextChallengeIndex < shapes.length;
@@ -1070,64 +703,99 @@ const handleVoiceFeedback = async (comparisonResult, voiceEnabled, voiceManager,
       const isNextAlreadyUnlocked = unlockedShapes.includes(nextChallengeIndex);
       
       // SUCCESS: Score >= 60% - Auto unlock and progress
-      if (roundedPercentage >= 60 && hasNextChallenge && isCurrentUnlocked && !isNextAlreadyUnlocked) {
-        console.log(`🎉 SUCCESS! Score ${percentage.toFixed(1)}% (Rounded: ${roundedPercentage}%) >= 60% - Auto-unlocking next challenge`);
-        
-        const challengeContext = {
-          unlocksNext: true,
-          isLastChallenge: nextChallengeIndex === shapes.length - 1,
-          challengeIndex: currentChallengeIndex,
-          totalChallenges: shapes.length,
-          autoProgression: true,
-          successScore: percentage
-        };
-        
-        // Play success/unlock voice
-        await voiceManager.playContextualVoice(comparisonResult, challengeContext);
-        
-        // Auto-unlock next challenge after voice
-        setTimeout(() => {
-          console.log(`🔓 Auto-unlocking challenge ${nextChallengeIndex + 1}: ${shapes[nextChallengeIndex].name}`);
+      if (roundedPercentage >= 60 && hasNextChallenge) {
+        if (!isNextAlreadyUnlocked) {
+          // SEQUENTIAL MODE: Unlock and auto-progress
+          const challengeContext = {
+            unlocksNext: true,
+            isLastChallenge: nextChallengeIndex === shapes.length - 1,
+            challengeIndex: currentChallengeIndex,
+            totalChallenges: shapes.length,
+            autoProgression: true,
+            successScore: percentage
+          };
           
-          setIsAutoProgressing(true); // Start auto-progression loading
+          // Play success/unlock voice
+          await voiceManager.playContextualVoice(comparisonResult, challengeContext);
           
-          updateUnlockedShapes(prev => {
-            const newUnlocked = [...prev, nextChallengeIndex];
-            console.log("✅ New unlocked shapes:", newUnlocked);
-            return newUnlocked;
-          });
-          
-          // Show enhanced unlock notification with score and auto-progression info
-          setUnlockNotificationData({
-            type: 'auto',
-            score: percentage,
-            challengeName: shapes[nextChallengeIndex].name
-          });
-          setShowUnlockNotification(true);
-          setTimeout(() => setShowUnlockNotification(false), 4000);
-          
-          // Auto-select next challenge after a brief delay
+          // Auto-unlock next challenge after voice
           setTimeout(() => {
-            console.log(`🎯 Auto-selecting next challenge: ${shapes[nextChallengeIndex].name}`);
+            setIsAutoProgressing(true); // Start auto-progression loading
+            
+            updateUnlockedShapes(prev => {
+              const prevArr = Array.isArray(prev) ? prev : (prev ? Object.values(prev).map(Number) : []);
+              const merged = Array.from(new Set([...prevArr, nextChallengeIndex]));
+              return merged;
+            });
+            
+            // Show enhanced unlock notification with score and auto-progression info
+            setUnlockNotificationData({
+              type: 'auto',
+              score: percentage,
+              challengeName: shapes[nextChallengeIndex].name
+            });
+            setShowUnlockNotification(true);
+            setTimeout(() => setShowUnlockNotification(false), 4000);
+            
+            // Auto-select next challenge after a brief delay
+            setTimeout(() => {
+              // Switch to next challenge
+              setSelectedImage(shapes[nextChallengeIndex].image);
+              
+              // Clear state for fresh start
+              setPrompt("");
+              setResult(null);
+              setAIGeneratedimg(null);
+              setHasComparedCurrentGeneration(false);
+              
+              setIsAutoProgressing(false); // End auto-progression loading
+              
+              // Play welcome voice for new challenge
+              setTimeout(async () => {
+                try {
+                  setIsVoicePlaying(true);
+                  await voiceManager.playWelcomeVoice();
+                  setIsVoicePlaying(false);
+                } catch (error) {
+                  console.warn('Welcome voice failed:', error);
+                  setIsVoicePlaying(false);
+                }
+              }, 500);
+              
+            }, 2000);
+          }, 2500);
+        } else {
+          // PRACTICE MODE: All unlocked, just play success and auto-progress
+          await voiceManager.playSuccessVoice();
+          
+          // Auto-select next challenge after voice
+          setTimeout(() => {
+            setIsAutoProgressing(true);
+            
+            // Show success notification
+            setUnlockNotificationData({
+              type: 'auto',
+              score: percentage,
+              challengeName: shapes[nextChallengeIndex].name
+            });
+            setShowUnlockNotification(true);
+            setTimeout(() => setShowUnlockNotification(false), 3000);
+            
+            // Switch to next challenge
             setSelectedImage(shapes[nextChallengeIndex].image);
             
-            // Clear prompt field for fresh start on new challenge
+            // Clear state for fresh start
             setPrompt("");
-            
-            // Clear any previous results and generated images for clean slate
             setResult(null);
             setAIGeneratedimg(null);
             setHasComparedCurrentGeneration(false);
             
-            console.log(`🧹 Cleared prompt and results for fresh start on ${shapes[nextChallengeIndex].name}`);
-            
-            setIsAutoProgressing(false); // End auto-progression loading
+            setIsAutoProgressing(false);
             
             // Play welcome voice for new challenge
             setTimeout(async () => {
               try {
                 setIsVoicePlaying(true);
-                console.log('🎵 Playing welcome voice for new challenge...');
                 await voiceManager.playWelcomeVoice();
                 setIsVoicePlaying(false);
               } catch (error) {
@@ -1137,13 +805,11 @@ const handleVoiceFeedback = async (comparisonResult, voiceEnabled, voiceManager,
             }, 500);
             
           }, 2000);
-        }, 2500);
+        }
         
       } 
       // NEAR SUCCESS: Score 40-59% - Motivational feedback
       else if (roundedPercentage >= 40 && roundedPercentage < 60) {
-        console.log(`🔥 NEAR SUCCESS! Score ${percentage.toFixed(1)}% (Rounded: ${roundedPercentage}%) (40-59%) - Playing motivation`);
-        
         const challengeContext = {
           unlocksNext: false,
           isLastChallenge: currentChallengeIndex === shapes.length - 1,
@@ -1155,24 +821,18 @@ const handleVoiceFeedback = async (comparisonResult, voiceEnabled, voiceManager,
         };
         
         await voiceManager.playNearSuccessVoice();
-        console.log('🎵 Near success voice played - user encouraged to try again');
         
       }
       // LOW SCORE: Score < 40% - Motivational retry feedback  
       else if (roundedPercentage < 40) {
-        console.log(`🔄 LOW SCORE! Score ${percentage.toFixed(1)}% (Rounded: ${roundedPercentage}%) < 40% - Playing retry motivation`);
-        
         await voiceManager.playMotivationVoice();
-        console.log('🎵 Motivation voice played - encouraging user to try different approach');
         
       }
       // ALREADY AT FINAL CHALLENGE or ALREADY UNLOCKED
       else if (!hasNextChallenge || isNextAlreadyUnlocked) {
         if (!hasNextChallenge && roundedPercentage >= 60) {
-          console.log(`🏆 FINAL CHALLENGE COMPLETED! Score ${percentage.toFixed(1)}% (Rounded: ${roundedPercentage}%) - Playing final celebration`);
           await voiceManager.playFinalCelebrationVoice();
         } else {
-          console.log(`✅ Challenge completed (already unlocked or final) - Playing success voice`);
           await voiceManager.playSuccessVoice();
         }
       }
@@ -1181,12 +841,6 @@ const handleVoiceFeedback = async (comparisonResult, voiceEnabled, voiceManager,
       
       // Log voice status after contextual voice
       const status = voiceManager.getVoiceAlternationStatus();
-      console.log('📊 Voice status after contextual feedback:', {
-        success: status.success,
-        motivation: status.motivation,
-        nearSuccess: status.nearSuccess,
-        unlock: status.unlock
-      });
       
     } catch (error) {
       console.warn("🎵 Voice feedback failed:", error);
@@ -1204,9 +858,7 @@ const handleVoiceFeedback = async (comparisonResult, voiceEnabled, voiceManager,
     const isNextAlreadyUnlocked = unlockedShapes.includes(nextChallengeIndex);
     
     // Auto-progression even without voice
-    if (roundedPercentage >= 60 && hasNextChallenge && isCurrentUnlocked && !isNextAlreadyUnlocked) {
-      console.log(`🎉 Silent auto-progression: Score ${percentage.toFixed(1)}% (Rounded: ${roundedPercentage}%) >= 60%`);
-      
+    if (roundedPercentage >= 60 && hasNextChallenge) {
       // Save progress data for silent mode too
       const saveProgressData = (challengeIndex, score, percentage, generatedImageUrl = null, comparisonResultData = null) => {
         // Only save progress data for passing scores (≥60%)
@@ -1234,7 +886,15 @@ const handleVoiceFeedback = async (comparisonResult, voiceEnabled, voiceManager,
       saveProgressData(currentChallengeIndex, score, percentage, AIGeneratedimg, comparisonResult);
       
       setTimeout(() => {
-        setUnlockedShapes(prev => [...prev, nextChallengeIndex]);
+        if (!isNextAlreadyUnlocked) {
+          // Sequential mode - unlock next challenge
+          updateUnlockedShapes(prev => {
+            const prevArr = Array.isArray(prev) ? prev : (prev ? Object.values(prev).map(Number) : []);
+            const merged = Array.from(new Set([...prevArr, nextChallengeIndex]));
+            return merged;
+          });
+        }
+        
         setUnlockNotificationData({
           type: 'auto',
           score: percentage,
@@ -1244,8 +904,6 @@ const handleVoiceFeedback = async (comparisonResult, voiceEnabled, voiceManager,
         setTimeout(() => setShowUnlockNotification(false), 4000);
         
         setTimeout(() => {
-          console.log(`🎯 Silent auto-selecting next challenge: ${shapes[nextChallengeIndex].name}`);
-          
           setIsAutoProgressing(true); // Start auto-progression loading
           
           setSelectedImage(shapes[nextChallengeIndex].image);
@@ -1258,28 +916,11 @@ const handleVoiceFeedback = async (comparisonResult, voiceEnabled, voiceManager,
           setAIGeneratedimg(null);
           setHasComparedCurrentGeneration(false);
           
-          console.log(`🧹 Silent mode: Cleared prompt and results for fresh start on ${shapes[nextChallengeIndex].name}`);
-          
           setIsAutoProgressing(false); // End auto-progression loading
         }, 2000);
       }, 1000);
     }
   }
-};
-
-// Helper function to handle simple image loading (no comparison)
-const handleSimpleImageLoad = (imageUrl, setIsImageLoading) => {
-  console.log("📷 handleSimpleImageLoad called for:", imageUrl);
-  const img = new Image();
-  img.onload = () => {
-    console.log("📷 Simple image load successful, setting isImageLoading to false");
-    setIsImageLoading(false);
-  };
-  img.onerror = () => {
-    console.log("📷 Simple image load failed, setting isImageLoading to false");
-    setIsImageLoading(false);
-  };
-  img.src = imageUrl;
 };
 
 // Helper function to handle generation errors
@@ -1350,7 +991,6 @@ const handleGenerateClick = async () => {
   } catch (error) {
     handleGenerationError(error, stateSetters);
   } finally {
-    console.log("Image generation complete");
     setIsGenerating(false);
   }
 };
@@ -1365,30 +1005,15 @@ const handleKeyPress = (e) => {
 
 // Debug: Track user auth status and sync states
   useEffect(() => {
-    if (user) {
-      console.log("👤 User authenticated:", {
-        uid: user.uid,
-        email: user.email,
-        isGuest: user.isGuest
-      });
-      console.log("  - Is loading:", isProgressLoading);
-      console.log("  - Is saving:", isProgressSaving);
-      console.log("  - Sync error:", syncError);
-      console.log("  - unlockedShapes from Firebase:", unlockedShapes);
-      console.log("  - progressData from Firebase:", Object.keys(progressData));
-    } else {
-      console.log("👤 No user authenticated - using guest mode");
-    }
+    // Reduced debug logging for production
   }, [user, isProgressLoading, isProgressSaving, syncError, unlockedShapes, progressData]);
 
   // Show sync status notification when user logs in or sync completes
   useEffect(() => {
     if (user && !user.isGuest && !isProgressLoading && !isProgressSaving && !syncError) {
       // Show sync status for 5 seconds when successfully synced
-      console.log('✅ Showing sync status notification for 5 seconds');
       setShowSyncStatus(true);
       const timer = setTimeout(() => {
-        console.log('⏰ Hiding sync status notification after 5 seconds');
         setShowSyncStatus(false);
       }, 5000); // Hide after 5 seconds
 
@@ -1696,11 +1321,10 @@ const handleKeyPress = (e) => {
                         src={AIGeneratedimg} 
                         alt="AI Generated" 
                         onLoad={() => {
-                          console.log("🖼️ Generated image loaded successfully");
+                          // Image loaded successfully
                         }} 
                         onError={(e) => {
-                          console.error("❌ Generated image display failed:", e);
-                          console.log("🔄 Image URL that failed:", AIGeneratedimg);
+                          console.error("Generated image display failed:", e);
                         }}
                         style={{
                           maxWidth: '100%',
@@ -1801,12 +1425,6 @@ const handleKeyPress = (e) => {
                 </motion.div>
               ) : (
                 <>
-                  {/* DEBUG: Log what's being passed to FeedbackComponent */}
-                  {console.log("🎯 HangingShapes - Passing to FeedbackComponent:", {
-                    selectedImage: !!selectedImage,
-                    result,
-                    isComparing
-                  })}
                   <FeedbackComponent 
                     selectedImage={selectedImage}
                     comparisonResult={result}
