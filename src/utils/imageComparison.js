@@ -9,7 +9,6 @@ const loadSSIM = async () => {
   try {
     const ssimModule = await import("ssim.js");
     ssimLib = ssimModule.ssim || ssimModule.default;
-    console.log("✅ SSIM library loaded successfully");
     return ssimLib;
   } catch (error) {
     console.warn("⚠️ SSIM library failed to load, using fallback method:", error);
@@ -19,8 +18,6 @@ const loadSSIM = async () => {
 
 // Simple pixel-based comparison fallback
 const simplePixelComparison = (imageData1, imageData2) => {
-  console.log("🔄 Using simple pixel comparison fallback");
-  
   if (imageData1.width !== imageData2.width || imageData1.height !== imageData2.height) {
     console.warn("Images have different dimensions");
     return 0.1; // Low score for different dimensions
@@ -50,15 +47,12 @@ const simplePixelComparison = (imageData1, imageData2) => {
   const maxDiff = Math.sqrt(3 * 255 * 255); // Max possible RGB difference
   const similarity = 1 - (avgDiff / maxDiff);
   
-  console.log(`Simple comparison result: ${(similarity * 100).toFixed(1)}%`);
   return Math.max(0, Math.min(1, similarity));
 };
 
 // Convert image to ImageData for SSIM processing with enhanced error handling
 const toImageData = (img, w, h) => {
   try {
-    console.log(`Converting image to ImageData: ${w}x${h}`);
-    
     const canvas = document.createElement("canvas");
     canvas.width = w;
     canvas.height = h;
@@ -91,7 +85,6 @@ const toImageData = (img, w, h) => {
       throw new Error('Failed to get image data from canvas');
     }
     
-    console.log(`Successfully converted to ImageData: ${imageData.width}x${imageData.height}`);
     return imageData;
   } catch (error) {
     console.error('Error in toImageData:', error);
@@ -102,8 +95,6 @@ const toImageData = (img, w, h) => {
 // Load image with enhanced error handling and retry mechanism
 const loadImage = (src) => {
   return new Promise((resolve, reject) => {
-    console.log(`📸 Attempting to load image: ${typeof src === 'string' ? src.substring(0, 100) : src}`);
-    
     // Handle different input types
     if (!src) {
       reject(new Error('No image source provided'));
@@ -122,22 +113,17 @@ const loadImage = (src) => {
     
     const attemptLoad = () => {
       loadAttempts++;
-      console.log(`📸 Load attempt ${loadAttempts}/${maxAttempts} for image`);
       
       img.onload = () => {
-        console.log(`✅ Image loaded successfully on attempt ${loadAttempts}: ${img.width}x${img.height}`);
         resolve(img);
       };
       
       img.onerror = (error) => {
-        console.warn(`❌ Failed to load image on attempt ${loadAttempts}:`, error);
-        
         if (loadAttempts < maxAttempts) {
           // Try different approaches
           if (loadAttempts === 2) {
             // Second attempt: remove crossOrigin
             img.crossOrigin = null;
-            console.log(`🔄 Retry without CORS (attempt ${loadAttempts + 1})`);
             setTimeout(attemptLoad, 500);
           } else {
             // Third attempt: different timeout
@@ -477,16 +463,11 @@ const computeSemanticSimilarity = (imageDataA, imageDataB) => {
 // Multi-Scale SSIM computation using ssim.js with proper MS-SSIM implementation
 const computeMultiScaleSSIM = async (imageDataA, imageDataB, numScales = 5) => {
   try {
-    console.log('Computing Multi-Scale SSIM for images:', 
-      `${imageDataA.width}x${imageDataA.height}`, 'vs', 
-      `${imageDataB.width}x${imageDataB.height}`);
-    
     // Load SSIM library
     const ssim = await loadSSIM();
     
     // If SSIM library failed to load, use fallback
     if (!ssim) {
-      console.log('SSIM library not available, using pixel comparison fallback');
       const fallbackScore = simplePixelComparison(imageDataA, imageDataB);
       return {
         ms_ssim: fallbackScore,
@@ -509,16 +490,12 @@ const computeMultiScaleSSIM = async (imageDataA, imageDataB, numScales = 5) => {
     const baseWidth = imageDataA.width;
     const baseHeight = imageDataA.height;
     
-    console.log(`Computing ${numScales} scales for MS-SSIM`);
-    
     for (let scale = 0; scale < numScales; scale++) {
       try {
         // Calculate dimensions for this scale
         const scaleFactor = Math.pow(2, scale);
         const scaleWidth = Math.max(8, Math.floor(baseWidth / scaleFactor));
         const scaleHeight = Math.max(8, Math.floor(baseHeight / scaleFactor));
-        
-        console.log(`Scale ${scale + 1}: ${scaleWidth}x${scaleHeight}`);
         
         // Create canvas for scaling
         const canvas = document.createElement('canvas');
@@ -565,7 +542,6 @@ const computeMultiScaleSSIM = async (imageDataA, imageDataB, numScales = 5) => {
         }
         
         ssimScore = Math.max(0, Math.min(1, ssimScore));
-        console.log(`Scale ${scale + 1} SSIM: ${ssimScore}`);
         
         // Store per-scale result
         perScaleScores.push({
@@ -593,8 +569,6 @@ const computeMultiScaleSSIM = async (imageDataA, imageDataB, numScales = 5) => {
         msssimValue *= Math.pow(fallbackScore, scaleWeights[scale]);
       }
     }
-    
-    console.log(`Final MS-SSIM value: ${msssimValue}`);
     
     return {
       ms_ssim: msssimValue,
@@ -629,28 +603,17 @@ const computeMultiScaleSSIM = async (imageDataA, imageDataB, numScales = 5) => {
 
 // Enhanced MS-SSIM with Structure, Color, and Shape Priority
 export const computeMSSSIM = async (srcA, srcB, numScales = 5) => {
-  console.log(`🎯 Starting enhanced MS-SSIM based comparison`);
-  console.log(`Source A: ${typeof srcA}, Source B: ${typeof srcB}`);
-  console.log(`Source A value:`, srcA);
-  console.log(`Source B value:`, srcB);
-  
   try {
     // Enhanced validation
     if (!srcA || !srcB) {
       throw new Error('Missing source images for comparison');
     }
     
-    console.log(`🎯 Loading images for comparison...`);
-    
     // Load both images using the enhanced loadImage function
     const [imgA, imgB] = await Promise.all([
       loadImage(srcA), 
       loadImage(srcB)
     ]);
-    
-    console.log(`✅ Images loaded successfully`);
-    console.log(`Image A: ${imgA.width}x${imgA.height}`);
-    console.log(`Image B: ${imgB.width}x${imgB.height}`);
     
     // Use smaller dimension as base for scaling
     const baseWidth = Math.min(imgA.width, imgB.width);
@@ -663,38 +626,25 @@ export const computeMSSSIM = async (srcA, srcB, numScales = 5) => {
     
     // Convert to ImageData for analysis (use optimal size for MS-SSIM)
     const standardSize = Math.min(512, Math.max(baseWidth, baseHeight));
-    console.log(`🔄 Converting images to ImageData at ${standardSize}x${standardSize}...`);
     
     const imageDataA = toImageData(imgA, standardSize, standardSize);
     const imageDataB = toImageData(imgB, standardSize, standardSize);
     
-    console.log(`✅ ImageData conversion completed`);
-    
     // 1. PRIMARY: Multi-Scale SSIM (Structure Priority) - 50% weight
-    console.log('Computing Multi-Scale SSIM (Structure)...');
     const msssimResult = await computeMultiScaleSSIM(imageDataA, imageDataB, numScales);
     const structureScore = msssimResult.ms_ssim;
-    console.log(`MS-SSIM Structure Score: ${structureScore}`);
     
     // 2. SECONDARY: Color Histogram (Color Priority) - 25% weight
-    console.log('Computing Color Histogram Similarity...');
     const colorScore = computeColorHistogramSimilarity(imageDataA, imageDataB);
-    console.log(`Color Similarity Score: ${colorScore}`);
     
     // 3. TERTIARY: Edge/Shape Analysis (Shape Priority) - 15% weight
-    console.log('Computing Edge/Shape Similarity...');
     const shapeScore = computeEdgeSimilarity(imageDataA, imageDataB);
-    console.log(`Shape/Edge Similarity Score: ${shapeScore}`);
     
     // 4. QUATERNARY: Semantic Content Analysis - 10% weight
-    console.log('Computing Semantic Similarity...');
     const semanticScore = computeSemanticSimilarity(imageDataA, imageDataB);
-    console.log(`Semantic Similarity Score: ${semanticScore}`);
     
     // 5. NEW: Pixel-based similarity for fine-grained comparison - 5% weight
-    console.log('Computing Pixel Similarity...');
     const pixelScore = computePixelSimilarity(imageDataA, imageDataB);
-    console.log(`Pixel Similarity Score: ${pixelScore}`);
     
     // Enhanced weighting system prioritizing structure, color, and shape
     const weights = {
@@ -704,8 +654,6 @@ export const computeMSSSIM = async (srcA, srcB, numScales = 5) => {
       semantic: 0.10,   // Semantic content analysis
       pixel: 0.05       // Fine-grained pixel comparison
     };
-    
-    console.log('Using weights:', weights);
     
     // Calculate weighted combined score
     const combinedScore = 
@@ -721,31 +669,26 @@ export const computeMSSSIM = async (srcA, srcB, numScales = 5) => {
     // If MS-SSIM shows good structure similarity, boost the overall score
     if (structureScore > 0.7) {
       finalScore = Math.min(1.0, combinedScore * 1.2); // Increased boost
-      console.log('Applied MS-SSIM structure boost');
     }
     
     // If color and shape align well with structure, apply additional boost
     if (structureScore > 0.5 && colorScore > 0.6 && shapeScore > 0.5) {
       finalScore = Math.min(1.0, finalScore * 1.15); // Increased boost
-      console.log('Applied multi-metric alignment boost');
     }
     
     // MS-SSIM quality adjustment - prevent very low scores when structure is decent
     if (structureScore > 0.4 && finalScore < 0.3) {
       finalScore = Math.max(finalScore, structureScore * 0.85); // Increased floor
-      console.log('Applied MS-SSIM quality floor adjustment');
     }
     
     // Additional enhancement for high semantic similarity
     if (semanticScore > 0.7 && structureScore > 0.4) {
       finalScore = Math.min(1.0, finalScore * 1.1);
-      console.log('Applied semantic enhancement boost');
     }
     
     // Additional enhancement for high pixel similarity (fine details)
     if (pixelScore > 0.8 && structureScore > 0.5) {
       finalScore = Math.min(1.0, finalScore * 1.05);
-      console.log('Applied pixel enhancement boost');
     }
     
     const percentage = Math.round(finalScore * 10000) / 100;
@@ -785,15 +728,6 @@ export const computeMSSSIM = async (srcA, srcB, numScales = 5) => {
       base_dimensions: `${standardSize}x${standardSize}`,
       algorithm: 'Enhanced MS-SSIM with Multi-Metric Analysis v2.2'
     };
-    
-    console.log('✅ Enhanced MS-SSIM based computation completed successfully');
-    console.log('Final result:', {
-      percentage: result.percentage,
-      method: 'local_ms_ssim_only',
-      structure: structureScore,
-      color: colorScore,
-      shape: shapeScore
-    });
     
     return result;
     

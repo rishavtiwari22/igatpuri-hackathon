@@ -26,11 +26,6 @@ const ProgressTracker = ({
     }
   }, [unlockedShapes, shapes.length]);
 
-  // Debug logging
-  useEffect(() => {
-    console.log("ProgressTracker - unlockedShapes:", unlockedShapes);
-  }, [unlockedShapes]);
-
   return (
     <div className="progress-tracker">
       {/* Voice Toggle Button */}
@@ -41,7 +36,6 @@ const ProgressTracker = ({
             setIsVoicePlaying(false);
           }
           setVoiceEnabled(!voiceEnabled);
-          console.log(`🎤 Voice feedback ${!voiceEnabled ? 'enabled' : 'disabled'}`);
         }}
         className={`voice-toggle-progress ${voiceEnabled ? 'enabled' : 'disabled'}`}
         whileHover={{ scale: 1.1 }}

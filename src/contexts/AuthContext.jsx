@@ -32,7 +32,6 @@ export const AuthProvider = ({ children }) => {
   const signInWithGoogle = async () => {
     try {
       setIsSigningIn(true);
-      console.log('🔐 Starting Google Sign In...');
       
       // Set persistence to local
       await setPersistence(auth, browserLocalPersistence);
@@ -45,12 +44,6 @@ export const AuthProvider = ({ children }) => {
       const result = await signInWithPopup(auth, googleProvider);
       const user = result.user;
       
-      console.log('✅ Google Sign In successful:', {
-        uid: user.uid,
-        email: user.email,
-        displayName: user.displayName
-      });
-      
       // Save user profile to Firebase (with offline handling)
       try {
         await firebaseService.saveUserProfile(user.uid, {
@@ -61,7 +54,6 @@ export const AuthProvider = ({ children }) => {
           lastSignInTime: user.metadata.lastSignInTime
         });
       } catch (saveError) {
-        console.warn('⚠️ Could not save user profile to Firebase:', saveError.message);
         // Continue with authentication even if profile save fails
       }
       
@@ -76,16 +68,13 @@ export const AuthProvider = ({ children }) => {
 
   // Sign Out
   const signOutUser = async () => {
-    try {
-      console.log('🔐 Signing out...');
-      
+    try {      
       if (user) {
         // Clear Firebase service cache
         firebaseService.clearUserData(user.uid);
       }
       
       await signOut(auth);
-      console.log('✅ Sign out successful');
     } catch (error) {
       console.error('❌ Sign out error:', error);
       throw error;
@@ -96,7 +85,6 @@ export const AuthProvider = ({ children }) => {
   const signInAsGuest = async () => {
     try {
       setIsSigningIn(true);
-      console.log('🎯 Starting Guest Sign In (Demo Mode)...');
       
       // Create a mock user object for guest mode
       const guestUser = {
@@ -110,13 +98,6 @@ export const AuthProvider = ({ children }) => {
           lastSignInTime: new Date().toISOString()
         }
       };
-      
-      console.log('✅ Guest Sign In successful (Demo Mode):', {
-        uid: guestUser.uid,
-        email: guestUser.email,
-        displayName: guestUser.displayName,
-        isGuest: true
-      });
       
       // Set the user directly (bypass Firebase)
       setUser(guestUser);
@@ -132,17 +113,9 @@ export const AuthProvider = ({ children }) => {
 
   // Auth state change listener
   useEffect(() => {
-    console.log('👂 Setting up auth state listener...');
-    
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       try {
         if (firebaseUser) {
-          console.log('✅ User authenticated:', {
-            uid: firebaseUser.uid,
-            email: firebaseUser.email,
-            displayName: firebaseUser.displayName
-          });
-          
           setUser(firebaseUser);
           
           // Update last login time
@@ -154,7 +127,6 @@ export const AuthProvider = ({ children }) => {
           });
           
         } else {
-          console.log('👤 No user authenticated');
           setUser(null);
         }
       } catch (error) {
@@ -165,7 +137,6 @@ export const AuthProvider = ({ children }) => {
     });
 
     return () => {
-      console.log('👋 Cleaning up auth state listener');
       unsubscribe();
     };
   }, []);

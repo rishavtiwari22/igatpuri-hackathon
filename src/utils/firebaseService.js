@@ -153,7 +153,6 @@ Error details: ${error.code} - ${error.message}
         updatedAt: serverTimestamp()
       }, { merge: true });
       
-      console.log('✅ Firebase: User profile saved successfully');
       return true;
     } catch (error) {
       this.logFirebaseError('saveUserProfile', error);
@@ -163,7 +162,6 @@ Error details: ${error.code} - ${error.message}
       }
       
       if (error.code === 'unavailable' || error.message.includes('offline')) {
-        console.warn('🔌 Firebase: Offline - user profile will sync when online');
         return false;
       }
       console.error('❌ Firebase: Error saving user profile:', error);
@@ -179,10 +177,8 @@ Error details: ${error.code} - ${error.message}
       
       if (userDoc.exists()) {
         const data = userDoc.data();
-        console.log('✅ Firebase: User profile retrieved successfully');
         return data;
       } else {
-        console.log('📝 Firebase: No user profile found, will create new one');
         return null;
       }
     } catch (error) {
@@ -212,15 +208,9 @@ Error details: ${error.code} - ${error.message}
         lastUpdated: new Date()
       });
       
-      console.log('✅ Firebase: Progress data saved successfully', {
-        challengeProgressKeys: Object.keys(progressData),
-        unlockedShapesCount: unlockedShapes.length
-      });
-      
       return true;
     } catch (error) {
       if (error.code === 'unavailable' || error.message.includes('offline') || error.code === 'permission-denied') {
-        console.warn('🔌 Firebase: Offline or permission denied - progress will sync when available');
         // Update cache anyway for local consistency
         this.userProgressCache.set(userId, {
           challengeProgress: progressData,
@@ -240,7 +230,6 @@ Error details: ${error.code} - ${error.message}
       // Check cache first
       if (this.userProgressCache.has(userId)) {
         const cached = this.userProgressCache.get(userId);
-        console.log('🔄 Firebase: Using cached progress data');
         return {
           challengeProgress: cached.challengeProgress || {},
           unlockedShapes: cached.unlockedShapes || [0]
@@ -260,17 +249,11 @@ Error details: ${error.code} - ${error.message}
           lastUpdated: new Date()
         });
         
-        console.log('✅ Firebase: Progress data retrieved successfully', {
-          challengeProgressKeys: Object.keys(data.challengeProgress || {}),
-          unlockedShapesCount: (data.unlockedShapes || [0]).length
-        });
-        
         return {
           challengeProgress: data.challengeProgress || {},
           unlockedShapes: data.unlockedShapes || [0]
         };
       } else {
-        console.log('📝 Firebase: No progress data found, returning defaults');
         const defaultData = {
           challengeProgress: {},
           unlockedShapes: [0]
@@ -286,7 +269,6 @@ Error details: ${error.code} - ${error.message}
       }
     } catch (error) {
       if (error.code === 'unavailable' || error.message.includes('offline')) {
-        console.warn('🔌 Firebase: Offline - returning cached or default progress data');
         // Return cached data if available, otherwise defaults
         if (this.userProgressCache.has(userId)) {
           const cached = this.userProgressCache.get(userId);
@@ -315,7 +297,6 @@ Error details: ${error.code} - ${error.message}
         updatedAt: serverTimestamp()
       }, { merge: true });
       
-      console.log('✅ Firebase: User settings saved successfully');
       return true;
     } catch (error) {
       console.error('❌ Firebase: Error saving user settings:', error);
@@ -331,10 +312,8 @@ Error details: ${error.code} - ${error.message}
       
       if (settingsDoc.exists()) {
         const data = settingsDoc.data();
-        console.log('✅ Firebase: User settings retrieved successfully');
         return data;
       } else {
-        console.log('📝 Firebase: No user settings found, returning defaults');
         return {
           voiceEnabled: true,
           selectedModel: 'pollinations'
@@ -366,10 +345,7 @@ Error details: ${error.code} - ${error.message}
             challengeProgress: data.challengeProgress || {},
             unlockedShapes: data.unlockedShapes || [0]
           });
-          
-          console.log('🔄 Firebase: Progress data updated from real-time listener');
         } else {
-          console.log('📝 Firebase: Progress document does not exist yet');
           callback({
             challengeProgress: {},
             unlockedShapes: [0]
@@ -380,7 +356,6 @@ Error details: ${error.code} - ${error.message}
       });
 
       this.listeners.set(userId, unsubscribe);
-      console.log('👂 Firebase: Progress data listener attached');
       
       return unsubscribe;
     } catch (error) {
@@ -395,7 +370,6 @@ Error details: ${error.code} - ${error.message}
       const unsubscribe = this.listeners.get(userId);
       unsubscribe();
       this.listeners.delete(userId);
-      console.log('👋 Firebase: Progress data listener removed');
     }
   }
 
@@ -403,14 +377,11 @@ Error details: ${error.code} - ${error.message}
   clearUserData(userId) {
     this.userProgressCache.delete(userId);
     this.unsubscribeFromProgressData(userId);
-    console.log('🧹 Firebase: User data cleared from cache');
   }
 
   // Migrate localStorage data to Firebase (one-time operation)
   async migrateLocalStorageToFirebase(userId) {
     try {
-      console.log('🔄 Firebase: Starting localStorage migration...');
-      
       // Get localStorage data
       const localUnlockedShapes = localStorage.getItem('unlockedShapes');
       const localChallengeProgress = localStorage.getItem('challengeProgress');
@@ -419,11 +390,6 @@ Error details: ${error.code} - ${error.message}
         const unlockedShapes = localUnlockedShapes ? JSON.parse(localUnlockedShapes) : [0];
         const challengeProgress = localChallengeProgress ? JSON.parse(localChallengeProgress) : {};
         
-        console.log('📊 Firebase: Migrating data:', {
-          unlockedShapesCount: unlockedShapes.length,
-          challengeProgressKeys: Object.keys(challengeProgress)
-        });
-        
         // Save to Firebase
         await this.saveProgressData(userId, challengeProgress, unlockedShapes);
         
@@ -431,10 +397,8 @@ Error details: ${error.code} - ${error.message}
         localStorage.removeItem('unlockedShapes');
         localStorage.removeItem('challengeProgress');
         
-        console.log('✅ Firebase: localStorage migration completed and local data cleared');
         return true;
       } else {
-        console.log('📝 Firebase: No localStorage data to migrate');
         return false;
       }
     } catch (error) {
@@ -482,11 +446,9 @@ Error details: ${error.code} - ${error.message}
         }
       }
       
-      console.log('📊 Firebase: User stats calculated:', stats);
       return stats;
     } catch (error) {
       if (error.code === 'unavailable' || error.message.includes('offline')) {
-        console.warn('🔌 Firebase: Offline - returning default user stats');
         return {
           totalChallenges: 0,
           completedChallenges: 0,
@@ -512,7 +474,6 @@ Error details: ${error.code} - ${error.message}
         ...data,
         timestamp: realtimeServerTimestamp()
       });
-      console.log('✅ Realtime DB: Data saved successfully to', path);
       return true;
     } catch (error) {
       console.error('❌ Realtime DB: Error saving data:', error);
@@ -527,10 +488,8 @@ Error details: ${error.code} - ${error.message}
       const snapshot = await get(dbRef);
       
       if (snapshot.exists()) {
-        console.log('✅ Realtime DB: Data retrieved successfully from', path);
         return snapshot.val();
       } else {
-        console.log('📝 Realtime DB: No data found at', path);
         return null;
       }
     } catch (error) {
@@ -547,7 +506,6 @@ Error details: ${error.code} - ${error.message}
         ...updates,
         lastUpdated: realtimeServerTimestamp()
       });
-      console.log('✅ Realtime DB: Data updated successfully at', path);
       return true;
     } catch (error) {
       console.error('❌ Realtime DB: Error updating data:', error);
@@ -563,10 +521,8 @@ Error details: ${error.code} - ${error.message}
       const unsubscribe = onValue(dbRef, (snapshot) => {
         if (snapshot.exists()) {
           callback(snapshot.val());
-          console.log('🔄 Realtime DB: Data updated from listener at', path);
         } else {
           callback(null);
-          console.log('📝 Realtime DB: No data at', path);
         }
       }, (error) => {
         console.error('❌ Realtime DB: Listener error:', error);
@@ -579,7 +535,6 @@ Error details: ${error.code} - ${error.message}
       }
       this.realtimeListeners.set(listenerKey, { ref: dbRef, unsubscribe });
       
-      console.log('👂 Realtime DB: Listener attached to', path);
       return unsubscribe;
     } catch (error) {
       console.error('❌ Realtime DB: Error setting up listener:', error);
@@ -594,7 +549,6 @@ Error details: ${error.code} - ${error.message}
       const listener = this.realtimeListeners.get(listenerKey);
       off(listener.ref);
       this.realtimeListeners.delete(listenerKey);
-      console.log('👋 Realtime DB: Listener removed from', path);
     }
   }
 
@@ -607,15 +561,9 @@ Error details: ${error.code} - ${error.message}
     try {
       if (this.firestoreAvailable) {
         firestoreResult = await this.saveProgressData(userId, challengeProgress, unlockedShapes);
-        if (firestoreResult) {
-          console.log('✅ Dual save: Data saved to Firestore');
-        }
-      } else {
-        console.log('⚠️ Dual save: Firestore unavailable, skipping');
       }
     } catch (error) {
       if (this.isFirestoreNotSetupError(error)) {
-        console.log('⚠️ Dual save: Firestore not set up, using Realtime DB only');
         this.firestoreAvailable = false;
       } else {
         console.error('❌ Dual save: Firestore error:', error);
@@ -630,9 +578,6 @@ Error details: ${error.code} - ${error.message}
           unlockedShapes,
           lastUpdated: new Date().toISOString()
         });
-        if (realtimeResult) {
-          console.log('✅ Dual save: Data saved to Realtime DB');
-        }
       }
     } catch (error) {
       console.error('❌ Dual save: Realtime DB error:', error);
@@ -641,9 +586,7 @@ Error details: ${error.code} - ${error.message}
 
     // Return true if at least one database succeeded
     const success = firestoreResult || realtimeResult;
-    if (success) {
-      console.log(`✅ Dual save: Successfully saved to ${firestoreResult && realtimeResult ? 'both databases' : firestoreResult ? 'Firestore only' : 'Realtime DB only'}`);
-    } else {
+    if (!success) {
       console.error('❌ Dual save: Failed to save to any database');
     }
     
@@ -656,14 +599,10 @@ Error details: ${error.code} - ${error.message}
     if (this.firestoreAvailable) {
       try {
         const firestoreData = await this.getProgressData(userId);
-        console.log('✅ Dual get: Retrieved data from Firestore');
         return firestoreData;
       } catch (firestoreError) {
         if (this.isFirestoreNotSetupError(firestoreError)) {
-          console.warn('⚠️ Firestore not set up, falling back to Realtime DB');
           this.firestoreAvailable = false;
-        } else {
-          console.warn('⚠️ Firestore error, trying Realtime DB:', firestoreError.message);
         }
       }
     }
@@ -673,7 +612,6 @@ Error details: ${error.code} - ${error.message}
       try {
         const realtimeData = await this.getFromRealtimeDB(userId, 'progress');
         if (realtimeData) {
-          console.log('✅ Dual get: Retrieved data from Realtime DB');
           return {
             challengeProgress: realtimeData.challengeProgress || {},
             unlockedShapes: realtimeData.unlockedShapes || [0]
@@ -686,7 +624,6 @@ Error details: ${error.code} - ${error.message}
     }
     
     // If both fail, return defaults
-    console.log('📝 Dual get: No data found in any database, returning defaults');
     return {
       challengeProgress: {},
       unlockedShapes: [0]

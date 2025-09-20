@@ -58,7 +58,6 @@ class VoiceManager {
       this.currentAudio.pause();
       this.currentAudio.currentTime = 0;
       this.isPlaying = false;
-      console.log('🎵 Voice stopped');
     }
     
     // Clear any queued audio
@@ -75,7 +74,6 @@ class VoiceManager {
     
     // If only one voice, return it
     if (voices.length === 1) {
-      console.log(`🎵 Single voice for ${category}, returning it`);
       return voices[0];
     }
     
@@ -85,9 +83,6 @@ class VoiceManager {
     
     // Move to next voice (cycle through all voices)
     this.voiceIndex[category] = (currentIndex + 1) % voices.length;
-    
-    console.log(`🎵 Selected ${category} voice ${currentIndex + 1}/${voices.length} (next will be ${this.voiceIndex[category] + 1})`);
-    console.log(`🎵 Voice file path:`, selectedVoice);
     
     return selectedVoice;
   }
@@ -141,22 +136,20 @@ class VoiceManager {
         
         // Set up event listeners
         audio.onloadstart = () => {
-          console.log('🎵 Voice loading...');
+          // Voice loading started
         };
         
         audio.oncanplaythrough = () => {
-          console.log('🎵 Voice ready to play');
+          // Voice ready to play
         };
         
         audio.onplay = () => {
           this.isPlaying = true;
-          console.log('🎵 Voice started playing');
         };
         
         audio.onended = () => {
           this.isPlaying = false;
           this.currentAudio = null;
-          console.log('🎵 Voice completed');
           resolve(true);
         };
         
@@ -170,7 +163,6 @@ class VoiceManager {
         audio.onabort = () => {
           this.isPlaying = false;
           this.currentAudio = null;
-          console.log('🎵 Voice playback aborted');
           resolve(false);
         };
         
@@ -261,8 +253,6 @@ class VoiceManager {
     const score = comparisonResult.result?.combined || comparisonResult.combined || 0;
     const percentage = score > 1 ? Math.round(score) : Math.round(score * 100);
     
-    console.log(`🎵 Playing contextual voice for ${percentage}% similarity`);
-    
     // Determine appropriate voice based on score
     if (percentage >= 70) {
       // Success! Play success voice and potentially unlock voice
@@ -317,8 +307,6 @@ class VoiceManager {
 
   // Test method to cycle through all voices in a category
   async testCategoryAlternation(category, cycles = 3) {
-    console.log(`🎵 Testing ${category} alternation for ${cycles} cycles...`);
-    
     const voices = this.voiceCategories[category];
     if (!voices) {
       console.error(`❌ Category ${category} not found`);
@@ -328,26 +316,19 @@ class VoiceManager {
     const totalTests = voices.length * cycles;
     
     for (let i = 0; i < totalTests; i++) {
-      console.log(`\n🎵 Test ${i + 1}/${totalTests} for ${category}:`);
-      
       const voiceFile = this.getNextVoice(category);
-      if (voiceFile) {
-        console.log(`✅ Got voice file: ${voiceFile}`);
-        // Simulate playing without actual audio
-        await new Promise(resolve => setTimeout(resolve, 1000));
-      } else {
+      if (!voiceFile) {
         console.error(`❌ Failed to get voice for ${category}`);
+        return;
       }
+      // Simulate playing without actual audio
+      await new Promise(resolve => setTimeout(resolve, 1000));
     }
-    
-    console.log(`🎵 ${category} alternation test completed!`);
-    console.log(`📊 Final status:`, this.getVoiceAlternationStatus()[category]);
   }
 
   // Reset startup voice flag (for testing or manual reset)
   resetStartupVoiceFlag() {
     sessionStorage.removeItem('hasPlayedStartupVoice');
-    console.log('🎵 Startup voice flag reset');
   }
 
   // Play welcome sequence (startup + welcome voice)
@@ -369,10 +350,8 @@ class VoiceManager {
 
   // Test voice system
   async testVoiceSystem() {
-    console.log('🎵 Testing voice system...');
     try {
       await this.playMotivationVoice();
-      console.log('🎵 Voice system test successful');
       return true;
     } catch (error) {
       console.error('🎵 Voice system test failed:', error);

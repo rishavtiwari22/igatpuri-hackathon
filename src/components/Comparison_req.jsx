@@ -2,14 +2,6 @@ import { computeMSSSIM } from '../utils/imageComparison';
 
 // Enhanced comparison handler using ONLY local MS-SSIM (no API fallback)
 const handleComparison = async (AIGeneratedimg, selectedImage) => {
-    console.log("🔍 Starting LOCAL-ONLY MS-SSIM comparison");
-    console.log("Comparison inputs:", {
-        AI: AIGeneratedimg,
-        AI_type: typeof AIGeneratedimg,
-        Target: selectedImage,
-        Target_type: typeof selectedImage
-    });
-
     if (!AIGeneratedimg || !selectedImage) {
         const errorResult = { 
             error: "Please generate and select an image first", 
@@ -24,16 +16,11 @@ const handleComparison = async (AIGeneratedimg, selectedImage) => {
     const startTime = Date.now();
     
     try {
-        console.log("🎯 Performing LOCAL MS-SSIM comparison (API disabled)...");
-        
         // ONLY METHOD: Local MS-SSIM comparison
         const localResult = await attemptLocalComparison(AIGeneratedimg, selectedImage);
         
         if (localResult.success) {
             const duration = Date.now() - startTime;
-            console.log(`✅ Local MS-SSIM comparison completed successfully in ${duration}ms`);
-            console.log("🔍 FULL localResult structure:", localResult);
-            console.log("🔍 localResult.result:", localResult.result);
             
             // Log analytics data for UX improvements
             logAnalytics('comparison_success', {
@@ -49,14 +36,11 @@ const handleComparison = async (AIGeneratedimg, selectedImage) => {
                 performance: { duration, timestamp: new Date().toISOString() }
             };
             
-            console.log("🎯 FINAL RESULT being returned from handleComparison:", finalResult);
-            
             return finalResult;
         }
         
         // If local MS-SSIM fails, return error (no API fallback)
         console.error("❌ Local MS-SSIM comparison failed");
-        console.log("Local failure reason:", localResult.error);
         
         // Return error result with detailed information about the failure
         const duration = Date.now() - startTime;
@@ -116,7 +100,6 @@ const logAnalytics = (event, data) => {
         }
         
         localStorage.setItem('imageComparisonAnalytics', JSON.stringify(existingData));
-        console.log('📊 Analytics logged:', event, data);
     } catch (error) {
         console.warn('Analytics logging failed:', error);
     }
@@ -125,21 +108,13 @@ const logAnalytics = (event, data) => {
 // Attempt local MS-SSIM comparison (primary method)
 const attemptLocalComparison = async (AIGeneratedimg, selectedImage) => {
     try {
-        console.log('🎯 Starting enhanced local MS-SSIM comparison...');
-        console.log('AI Image:', typeof AIGeneratedimg, AIGeneratedimg);
-        console.log('Selected Image:', typeof selectedImage, selectedImage);
-        
         // Validate image sources
         if (!AIGeneratedimg || !selectedImage) {
             throw new Error('Missing image sources for local comparison');
         }
         
-        console.log('📸 Image sources validated, beginning MS-SSIM analysis...');
-        
         // Use the enhanced MS-SSIM algorithm with 5 scales for maximum accuracy
         const result = await computeMSSSIM(selectedImage, AIGeneratedimg, 5);
-        
-        console.log('🔍 MS-SSIM computation result:', result);
         
         if (!result) {
             throw new Error('MS-SSIM computation returned null/undefined');
@@ -175,9 +150,6 @@ const attemptLocalComparison = async (AIGeneratedimg, selectedImage) => {
             accuracy_level: 'high',
             algorithm_version: '2.2'
         };
-        
-        console.log('✅ Local MS-SSIM comparison successful:', enhancedResult.percentage + '%');
-        console.log('📊 Enhanced result detailed_scores:', enhancedResult.detailed_scores);
         
         return { success: true, result: enhancedResult };
         
