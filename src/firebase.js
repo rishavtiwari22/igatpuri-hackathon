@@ -3,6 +3,7 @@ import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider } from 'firebase/auth';
 import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore';
 import { getDatabase } from 'firebase/database';
+import { getAnalytics, isSupported } from 'firebase/analytics';
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -29,6 +30,17 @@ export const db = getFirestore(app);
 
 // Initialize Realtime Database
 export const realtimeDb = getDatabase(app);
+
+// Initialize Analytics (only if supported and measurementId is available)
+let analytics = null;
+if (import.meta.env.VITE_FIREBASE_MEASUREMENT_ID) {
+  isSupported().then((supported) => {
+    if (supported) {
+      analytics = getAnalytics(app);
+    }
+  });
+}
+export { analytics };
 
 // Enable offline persistence and better error handling
 import { enableNetwork, disableNetwork } from 'firebase/firestore';
