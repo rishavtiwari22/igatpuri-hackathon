@@ -15,6 +15,7 @@ import { playClickSound, playGenerationStartSound } from "./Sound_Generation";
 import voiceManager from "../utils/voiceManager";
 import { useAuth } from "../contexts/AuthContext";
 import { useFirebaseProgress } from "../hooks/useFirebaseProgress";
+import { useAnalyticsSession } from "../hooks/useAnalyticsSession";
 import UserProfile from "./UserProfile";
 import { 
   trackImageGeneration, 
@@ -23,7 +24,10 @@ import {
   trackGameCompletion,
   trackButtonClick,
   trackError,
-  trackEngagement
+  trackEngagement,
+  trackFeatureUsage,
+  trackUserMilestone,
+  trackModelPerformance
 } from "../utils/analyticsService";
 
 const shapes = [
@@ -69,6 +73,9 @@ export default function HangingShapes() {
   const [showUserProfile, setShowUserProfile] = useState(false); // User profile modal state
   const [showSyncStatus, setShowSyncStatus] = useState(false); // Sync status notification visibility
 
+  // Analytics session tracking
+  const { trackActivity, trackChallengeTime } = useAnalyticsSession(user, progressData);
+
 
   // Available models for image generation
   const availableModels = [
@@ -76,16 +83,25 @@ export default function HangingShapes() {
     { id: "clipdrop", name: "ClipDrop", description: "High quality results" }
   ];
 
-  // Set initial target image to the first unlocked shape
+  // Set initial target image to the first unlocked shape and track session start
   useEffect(() => {
     if (unlockedShapes.length > 0 && !isProgressLoading) {
       const firstUnlockedIndex = unlockedShapes[0];
       
       if (shapes[firstUnlockedIndex]) {
         setSelectedImage(shapes[firstUnlockedIndex].image);
+        
+        // Track session start (only once per session)
+        if (!sessionStorage.getItem('gameStartTime')) {
+          sessionStorage.setItem('gameStartTime', Date.now().toString());
+          trackFeatureUsage('game_session', 'started', {
+            user_type: user?.isGuest ? 'guest' : 'authenticated',
+            first_unlocked_challenge: shapes[firstUnlockedIndex].name
+          });
+        }
       }
     }
-  }, [unlockedShapes, isProgressLoading]); // Now depends on both unlockedShapes and loading state
+  }, [unlockedShapes, isProgressLoading, user]); // Now depends on both unlockedShapes and loading state
 
   // Ensure first challenge is unlocked if no progress exists
   useEffect(() => {
@@ -207,9 +223,17 @@ export default function HangingShapes() {
 
     const shape = shapes[numericIndex] || shapes[index];
 
-    // Track shape selection
+    // Track shape selection with enhanced analytics
     const shapeName = shapes.find(s => s.image === image)?.name || 'unknown';
     trackButtonClick(`hanging_shape_${shapeName.toLowerCase()}`, 'hanging_shapes');
+    trackFeatureUsage('challenge_selection', 'clicked', {
+      challenge: shapeName,
+      challenge_index: numericIndex,
+      source: 'hanging_shapes',
+      is_unlocked: isUnlocked,
+      has_previous_progress: !!(progressData && progressData[numericIndex])
+    });
+    trackActivity('challenge_selected', { challenge: shapeName, source: 'hanging_shapes' });
     
     // Allow selecting shape
     setSelectedImage(image);
@@ -261,8 +285,16 @@ export default function HangingShapes() {
 
     const shape = shapes[numericIndex] || shapes[index];
 
-    // Track shape selection
+    // Track shape selection with enhanced analytics
     trackButtonClick(`shape_${shape.name.toLowerCase()}`, 'progress_tracker');
+    trackFeatureUsage('challenge_selection', 'clicked', {
+      challenge: shape.name,
+      challenge_index: numericIndex,
+      source: 'progress_tracker',
+      is_unlocked: isUnlocked,
+      has_previous_progress: !!(progressData && progressData[numericIndex])
+    });
+    trackActivity('challenge_selected', { challenge: shape.name, source: 'progress_tracker' });
     
     // Navigate to challenge
     setSelectedImage(shape.image);
@@ -612,6 +644,38 @@ const performComparison = async (imageUrl, selectedImage, handleComparison, setI
           percentage: comparisonResult.percentage || (comparisonResult.combined * 100) || (comparisonResult.ms_ssim * 100) || 0
         };
         
+        // Track comparison analytics
+        trackImageComparison(normalizedResult.percentage, 1);
+        trackFeatureUsage('image_comparison', 'completed', {
+          score: normalizedResult.percentage,
+          method: comparisonResult.method || 'ms_ssim',
+          challenge: currentChallengeIndex >= 0 ? shapes[currentChallengeIndex].name : 'unknown',
+          passed: normalizedResult.percentage >= 60
+        });
+        
+        // Track user milestone for high scores
+        if (normalizedResult.percentage >= 90) {
+          trackUserMilestone('excellent_match', {
+            score: normalizedResult.percentage,
+            challenge: shapes[currentChallengeIndex]?.name
+          });
+          trackActivity('excellent_match_achieved', { score: normalizedResult.percentage });
+        } else if (normalizedResult.percentage >= 60) {
+          trackUserMilestone('good_match', {
+            score: normalizedResult.percentage,
+            challenge: shapes[currentChallengeIndex]?.name
+          });
+          trackActivity('challenge_completed', { 
+            score: normalizedResult.percentage,
+            challenge: shapes[currentChallengeIndex]?.name 
+          });
+        } else {
+          trackActivity('challenge_attempted', { 
+            score: normalizedResult.percentage,
+            challenge: shapes[currentChallengeIndex]?.name 
+          });
+        }
+        
         // Save progress data for this attempt with generated image
         if (currentChallengeIndex >= 0) {
           // Store the generated image URL when saving progress
@@ -882,11 +946,25 @@ const handleVoiceFeedback = async (comparisonResult, voiceEnabled, voiceManager,
       // ALREADY AT FINAL CHALLENGE or ALREADY UNLOCKED
       else if (!hasNextChallenge || isNextAlreadyUnlocked) {
         if (!hasNextChallenge && roundedPercentage >= 60) {
-          // Track game completion
+          // Track comprehensive game completion
           const totalTime = sessionStorage.getItem('gameStartTime') ? 
             (Date.now() - parseInt(sessionStorage.getItem('gameStartTime'))) / 1000 : 0;
           const completedChallenges = Object.keys(progressData || {}).length + 1; // +1 for current completion
+          
+          // Calculate comprehensive statistics
+          const allScores = Object.values(progressData || {}).map(p => p.bestScore || 0);
+          allScores.push(roundedPercentage); // Add current final score
+          const averageScore = allScores.reduce((sum, score) => sum + score, 0) / allScores.length;
+          const bestOverallScore = Math.max(...allScores);
+          
           trackGameCompletion(roundedPercentage, totalTime, completedChallenges);
+          trackUserMilestone('game_completed', {
+            final_score: roundedPercentage,
+            average_score: averageScore,
+            best_score: bestOverallScore,
+            total_time: totalTime,
+            completion_date: new Date().toISOString()
+          });
           
           await voiceManager.playFinalCelebrationVoice();
         } else {
@@ -1017,11 +1095,33 @@ const handleGenerateClick = async () => {
   playGenerationSoundAndVoice(playGenerationStartSound, voiceManager, voiceEnabled, setIsVoicePlaying);
   
   try {
-    // Track image generation start
+    // Track image generation start with enhanced metadata
+    const generationStartTime = Date.now();
     trackImageGeneration(prompt, selectedModel);
+    trackFeatureUsage('image_generation', 'started', {
+      model: selectedModel,
+      prompt_length: prompt.length,
+      prompt_words: prompt.split(' ').length,
+      has_selected_image: !!selectedImage
+    });
+    trackActivity('image_generation_started', { model: selectedModel, prompt_length: prompt.length });
     
     // Image generation
     const imageUrl = await generateImageByModel(selectedModel, prompt, generate_img, generateWithClipDrop);
+    
+    // Track successful generation
+    const generationTime = Date.now() - generationStartTime;
+    trackModelPerformance(selectedModel, {
+      responseTime: generationTime,
+      successRate: 1.0,
+      qualityScore: 1.0 // We'll update this after comparison
+    });
+    
+    trackFeatureUsage('image_generation', 'completed', {
+      model: selectedModel,
+      generation_time_ms: generationTime,
+      success: true
+    });
     
     if (imageUrl) {
       // Comparison parameters - updated to use voice system and auto-progression
