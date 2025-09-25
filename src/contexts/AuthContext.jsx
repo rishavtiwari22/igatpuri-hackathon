@@ -9,6 +9,12 @@ import {
 } from 'firebase/auth';
 import { auth, googleProvider } from '../firebase';
 import firebaseService from '../utils/firebaseService';
+import { 
+  trackUserLogin, 
+  trackUserLogout, 
+  setAnalyticsUser,
+  trackError 
+} from '../utils/analyticsService';
 
 // Create Auth Context
 const AuthContext = createContext();
@@ -44,6 +50,14 @@ export const AuthProvider = ({ children }) => {
       const result = await signInWithPopup(auth, googleProvider);
       const user = result.user;
       
+      // Track login event
+      trackUserLogin('google');
+      setAnalyticsUser(user.uid, {
+        email: user.email,
+        display_name: user.displayName,
+        sign_in_method: 'google'
+      });
+      
       // Save user profile to Firebase (with offline handling)
       try {
         await firebaseService.saveUserProfile(user.uid, {
@@ -60,6 +74,7 @@ export const AuthProvider = ({ children }) => {
       return user;
     } catch (error) {
       console.error('❌ Google Sign In error:', error);
+      trackError('Google Sign In Failed', error.message);
       throw error;
     } finally {
       setIsSigningIn(false);
@@ -70,6 +85,9 @@ export const AuthProvider = ({ children }) => {
   const signOutUser = async () => {
     try {      
       if (user) {
+        // Track logout
+        trackUserLogout();
+        
         // Clear Firebase service cache
         firebaseService.clearUserData(user.uid);
       }
@@ -77,6 +95,7 @@ export const AuthProvider = ({ children }) => {
       await signOut(auth);
     } catch (error) {
       console.error('❌ Sign out error:', error);
+      trackError('Sign Out Failed', error.message);
       throw error;
     }
   };
@@ -98,6 +117,13 @@ export const AuthProvider = ({ children }) => {
           lastSignInTime: new Date().toISOString()
         }
       };
+      
+      // Track guest login
+      trackUserLogin('guest');
+      setAnalyticsUser(guestUser.uid, {
+        user_type: 'guest',
+        sign_in_method: 'guest'
+      });
       
       // Set the user directly (bypass Firebase)
       setUser(guestUser);

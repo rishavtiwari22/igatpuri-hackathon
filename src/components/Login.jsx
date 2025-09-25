@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
+import { trackButtonClick, trackError } from '../utils/analyticsService';
 
 const Login = () => {
   const { signInWithGoogle, isSigningIn, signInAsGuest } = useAuth();
@@ -40,9 +41,11 @@ const Login = () => {
   const handleGoogleSignIn = async () => {
     try {
       setError(null);
+      trackButtonClick('google_signin', 'login_page');
       await signInWithGoogle();
     } catch (error) {
       console.error('Login error:', error);
+      trackError('Google Sign In UI Error', error.message);
       setError(error.message);
     }
   };
@@ -50,9 +53,11 @@ const Login = () => {
   const handleGuestSignIn = async () => {
     try {
       setError(null);
+      trackButtonClick('guest_signin', 'login_page');
       await signInAsGuest();
     } catch (error) {
       console.error('Guest login error:', error);
+      trackError('Guest Sign In UI Error', error.message);
       setError(error.message);
     }
   };

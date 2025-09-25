@@ -16,6 +16,15 @@ import voiceManager from "../utils/voiceManager";
 import { useAuth } from "../contexts/AuthContext";
 import { useFirebaseProgress } from "../hooks/useFirebaseProgress";
 import UserProfile from "./UserProfile";
+import { 
+  trackImageGeneration, 
+  trackImageComparison, 
+  trackGameProgress,
+  trackGameCompletion,
+  trackButtonClick,
+  trackError,
+  trackEngagement
+} from "../utils/analyticsService";
 
 const shapes = [
   { type: "circle", left: "10%", rope: "rope-1", image: image1, name: "Car" },
@@ -126,6 +135,31 @@ export default function HangingShapes() {
     };
   }, [isVoicePlaying, AIGeneratedimg]);
 
+  // Track game session start time and engagement
+  useEffect(() => {
+    if (!sessionStorage.getItem('gameStartTime')) {
+      sessionStorage.setItem('gameStartTime', Date.now().toString());
+    }
+    
+    // Track app launch
+    trackEngagement('app_launched');
+  }, []);
+
+  // Track engagement when user interacts with the app
+  useEffect(() => {
+    const handleUserInteraction = () => {
+      trackEngagement('user_active');
+    };
+
+    window.addEventListener('click', handleUserInteraction);
+    window.addEventListener('keydown', handleUserInteraction);
+
+    return () => {
+      window.removeEventListener('click', handleUserInteraction);
+      window.removeEventListener('keydown', handleUserInteraction);
+    };
+  }, []);
+
   // Startup voice - play welcome/startup voice when app loads
   useEffect(() => {
     const hasPlayedStartup = sessionStorage.getItem('hasPlayedStartupVoice');
@@ -173,6 +207,10 @@ export default function HangingShapes() {
 
     const shape = shapes[numericIndex] || shapes[index];
 
+    // Track shape selection
+    const shapeName = shapes.find(s => s.image === image)?.name || 'unknown';
+    trackButtonClick(`hanging_shape_${shapeName.toLowerCase()}`, 'hanging_shapes');
+    
     // Allow selecting shape
     setSelectedImage(image);
     setHasComparedCurrentGeneration(false);
@@ -223,6 +261,9 @@ export default function HangingShapes() {
 
     const shape = shapes[numericIndex] || shapes[index];
 
+    // Track shape selection
+    trackButtonClick(`shape_${shape.name.toLowerCase()}`, 'progress_tracker');
+    
     // Navigate to challenge
     setSelectedImage(shape.image);
     setHasComparedCurrentGeneration(false);
@@ -511,11 +552,21 @@ const performComparison = async (imageUrl, selectedImage, handleComparison, setI
     setIsComparing(true);
     const comparisonResult = await handleComparison(imageUrl, selectedImage);
     
+    // Track image comparison
+    if (comparisonResult && comparisonResult.percentage) {
+      const currentChallengeIndex = shapes.findIndex(shape => shape.image === selectedImage);
+      const attempts = (progressData && progressData[currentChallengeIndex]) ? (progressData[currentChallengeIndex].attempts || 0) + 1 : 1;
+      trackImageComparison(comparisonResult.percentage, attempts);
+    }
+    
     // Save progress data for ALL attempts (not just successful auto-progression)
     const currentChallengeIndex = shapes.findIndex(shape => shape.image === selectedImage);
     const saveProgressData = (challengeIndex, percentage, generatedImageUrl = null, comparisonResultData = null) => {
       // Only save progress data for passing scores (≥60%)
       if (percentage >= 60) {
+        // Track game progress
+        trackGameProgress(challengeIndex + 1, percentage);
+        
         updateProgressData(prev => ({
           ...prev,
           [challengeIndex]: {
@@ -831,6 +882,12 @@ const handleVoiceFeedback = async (comparisonResult, voiceEnabled, voiceManager,
       // ALREADY AT FINAL CHALLENGE or ALREADY UNLOCKED
       else if (!hasNextChallenge || isNextAlreadyUnlocked) {
         if (!hasNextChallenge && roundedPercentage >= 60) {
+          // Track game completion
+          const totalTime = sessionStorage.getItem('gameStartTime') ? 
+            (Date.now() - parseInt(sessionStorage.getItem('gameStartTime'))) / 1000 : 0;
+          const completedChallenges = Object.keys(progressData || {}).length + 1; // +1 for current completion
+          trackGameCompletion(roundedPercentage, totalTime, completedChallenges);
+          
           await voiceManager.playFinalCelebrationVoice();
         } else {
           await voiceManager.playSuccessVoice();
@@ -939,6 +996,9 @@ const handleGenerateClick = async () => {
   // Validation
   if (!canStartGeneration(prompt, isGenerating)) return;
   
+  // Track generate button click
+  trackButtonClick('generate_image', 'main_controls');
+  
   // Cleanup and preparation
   stopOngoingVoice(isVoicePlaying, voiceManager, setIsVoicePlaying);
   cleanupPreviousResources(AIGeneratedimg);
@@ -957,6 +1017,9 @@ const handleGenerateClick = async () => {
   playGenerationSoundAndVoice(playGenerationStartSound, voiceManager, voiceEnabled, setIsVoicePlaying);
   
   try {
+    // Track image generation start
+    trackImageGeneration(prompt, selectedModel);
+    
     // Image generation
     const imageUrl = await generateImageByModel(selectedModel, prompt, generate_img, generateWithClipDrop);
     
@@ -989,6 +1052,7 @@ const handleGenerateClick = async () => {
     }
     
   } catch (error) {
+    trackError('Image Generation Failed', `${selectedModel}: ${error.message}`);
     handleGenerationError(error, stateSetters);
   } finally {
     setIsGenerating(false);
@@ -1209,7 +1273,10 @@ const handleKeyPress = (e) => {
             progressData={progressData}
             onShapeClick={handleProgressShapeClick}
             selectedImage={selectedImage}
-            onShowUserProfile={() => setShowUserProfile(true)}
+            onShowUserProfile={() => {
+              trackButtonClick('user_profile', 'progress_tracker');
+              setShowUserProfile(true);
+            }}
           />
         </div>
         <div className="main-content">
@@ -1270,6 +1337,7 @@ const handleKeyPress = (e) => {
                     value={selectedModel} 
                     onChange={(e) => {
                       const newModel = e.target.value;
+                      trackButtonClick(`model_${newModel}`, 'model_selection');
                       setSelectedModel(newModel);
                     }}
                     className="model-dropdown"

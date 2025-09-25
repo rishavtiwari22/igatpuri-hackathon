@@ -1,14 +1,26 @@
 // App.jsx
-import React from "react";
+import React, { useEffect } from "react";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import HangingShapes from "./components/HangingShapes";
 import Login from "./components/Login";
 import FirebaseSetupAlert from "./components/FirebaseSetupAlert";
+import { trackPageView } from "./utils/analyticsService";
 import "./App.css";
 
 // Main App Content Component
 const AppContent = () => {
   const { user, loading } = useAuth();
+
+  // Track page views when component mounts or user changes
+  useEffect(() => {
+    if (!loading) {
+      if (user) {
+        trackPageView('main_app', 'AI Art Challenge - Main Game');
+      } else {
+        trackPageView('login_page', 'AI Art Challenge - Login');
+      }
+    }
+  }, [user, loading]);
 
   // Show loading screen while checking auth state
   if (loading) {
