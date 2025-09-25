@@ -13,6 +13,8 @@ import {
   trackUserLogin, 
   trackUserLogout, 
   setAnalyticsUser,
+  setEnhancedUserProperties,
+  trackUserMilestone,
   trackError 
 } from '../utils/analyticsService';
 
@@ -50,13 +52,24 @@ export const AuthProvider = ({ children }) => {
       const result = await signInWithPopup(auth, googleProvider);
       const user = result.user;
       
-      // Track login event
+      // Track login event with enhanced analytics
       trackUserLogin('google');
-      setAnalyticsUser(user.uid, {
-        email: user.email,
-        display_name: user.displayName,
-        sign_in_method: 'google'
+      setEnhancedUserProperties(user, {
+        sign_in_method: 'google',
+        is_new_user: result.additionalUserInfo?.isNewUser || false,
       });
+      
+      // Track milestone if new user
+      if (result.additionalUserInfo?.isNewUser) {
+        trackUserMilestone('account_created', {
+          provider: 'google',
+          registration_method: 'popup'
+        });
+      } else {
+        trackUserMilestone('user_returned', {
+          provider: 'google'
+        });
+      }
       
       // Save user profile to Firebase (with offline handling)
       try {

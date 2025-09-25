@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
 import { useFirebaseProgress } from '../hooks/useFirebaseProgress';
+import AnalyticsInsights from './AnalyticsInsights';
 import './UserProfile.css';
 
 const UserProfile = ({ isOpen, onClose }) => {
@@ -11,6 +12,7 @@ const UserProfile = ({ isOpen, onClose }) => {
   const [userStats, setUserStats] = useState(null);
   const [isLoadingStats, setIsLoadingStats] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
+  const [showAnalytics, setShowAnalytics] = useState(false);
 
   useEffect(() => {
     if (isOpen && user) {
