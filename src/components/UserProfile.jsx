@@ -3,7 +3,6 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
 import { useFirebaseProgress } from '../hooks/useFirebaseProgress';
-import AnalyticsInsights from './AnalyticsInsights';
 import './UserProfile.css';
 
 const UserProfile = ({ isOpen, onClose }) => {
