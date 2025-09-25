@@ -15,7 +15,6 @@ import { playClickSound, playGenerationStartSound } from "./Sound_Generation";
 import voiceManager from "../utils/voiceManager";
 import { useAuth } from "../contexts/AuthContext";
 import { useFirebaseProgress } from "../hooks/useFirebaseProgress";
-import { useAnalyticsSession } from "../hooks/useAnalyticsSession";
 import UserProfile from "./UserProfile";
 import { 
   trackImageGeneration, 
@@ -72,9 +71,6 @@ export default function HangingShapes() {
   const [isAutoProgressing, setIsAutoProgressing] = useState(false); // Auto-progression loading state
   const [showUserProfile, setShowUserProfile] = useState(false); // User profile modal state
   const [showSyncStatus, setShowSyncStatus] = useState(false); // Sync status notification visibility
-
-  // Analytics session tracking
-  const { trackActivity, trackChallengeTime } = useAnalyticsSession(user, progressData);
 
 
   // Available models for image generation
