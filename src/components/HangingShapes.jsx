@@ -229,7 +229,7 @@ export default function HangingShapes() {
       is_unlocked: isUnlocked,
       has_previous_progress: !!(progressData && progressData[numericIndex])
     });
-    trackActivity('challenge_selected', { challenge: shapeName, source: 'hanging_shapes' });
+    trackFeatureUsage('challenge_selection', 'selected', { challenge: shapeName, source: 'hanging_shapes' });
     
     // Allow selecting shape
     setSelectedImage(image);
@@ -290,7 +290,7 @@ export default function HangingShapes() {
       is_unlocked: isUnlocked,
       has_previous_progress: !!(progressData && progressData[numericIndex])
     });
-    trackActivity('challenge_selected', { challenge: shape.name, source: 'progress_tracker' });
+    trackFeatureUsage('challenge_selection', 'selected', { challenge: shape.name, source: 'progress_tracker' });
     
     // Navigate to challenge
     setSelectedImage(shape.image);
@@ -655,21 +655,15 @@ const performComparison = async (imageUrl, selectedImage, handleComparison, setI
             score: normalizedResult.percentage,
             challenge: shapes[currentChallengeIndex]?.name
           });
-          trackActivity('excellent_match_achieved', { score: normalizedResult.percentage });
+          trackUserMilestone('excellent_match_achieved', { score: normalizedResult.percentage });
         } else if (normalizedResult.percentage >= 60) {
           trackUserMilestone('good_match', {
             score: normalizedResult.percentage,
             challenge: shapes[currentChallengeIndex]?.name
           });
-          trackActivity('challenge_completed', { 
-            score: normalizedResult.percentage,
-            challenge: shapes[currentChallengeIndex]?.name 
-          });
+          trackGameProgress(currentChallengeIndex, normalizedResult.percentage, 0);
         } else {
-          trackActivity('challenge_attempted', { 
-            score: normalizedResult.percentage,
-            challenge: shapes[currentChallengeIndex]?.name 
-          });
+          trackGameProgress(currentChallengeIndex, normalizedResult.percentage, 0);
         }
         
         // Save progress data for this attempt with generated image
@@ -1100,7 +1094,7 @@ const handleGenerateClick = async () => {
       prompt_words: prompt.split(' ').length,
       has_selected_image: !!selectedImage
     });
-    trackActivity('image_generation_started', { model: selectedModel, prompt_length: prompt.length });
+    trackFeatureUsage('image_generation', 'started', { model: selectedModel, prompt_length: prompt.length });
     
     // Image generation
     const imageUrl = await generateImageByModel(selectedModel, prompt, generate_img, generateWithClipDrop);
